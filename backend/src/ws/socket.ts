@@ -86,6 +86,9 @@ export const realtime = {
   orderCancelled<T>(orderId: number, userTelegramId: number, data: T) {
     emit(["kitchen", "courier", `user:${userTelegramId}`], "order.cancelled", orderId, data);
   },
+  orderRiskFlagged<T>(orderId: number, userTelegramId: number, data: T) {
+    emit(["kitchen", `user:${userTelegramId}`], "order.risk_flagged", orderId, data);
+  },
   deliveryConfirmed<T>(orderId: number, userTelegramId: number, data: T) {
     emit([`user:${userTelegramId}`], "delivery.confirmed", orderId, data);
   },

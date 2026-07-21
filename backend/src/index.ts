@@ -5,6 +5,7 @@ import { env } from "./config/env";
 import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { initSocket } from "./ws/socket";
+import { ensureRedisConnected } from "./core/redis";
 
 const app = express();
 // Mini App, Android KDS, and Courier Bot are all served from different
@@ -18,6 +19,8 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+app.use("/uploads", express.static("uploads"));
+
 app.use(apiRouter);
 
 app.use(notFoundHandler);
@@ -25,6 +28,8 @@ app.use(errorHandler);
 
 const httpServer = createServer(app);
 initSocket(httpServer);
+
+await ensureRedisConnected();
 
 httpServer.listen(env.port, () => {
   console.log(`MyDoners backend listening on :${env.port} (REST + WebSocket at /realtime)`);

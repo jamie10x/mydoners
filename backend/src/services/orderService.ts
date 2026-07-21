@@ -1,11 +1,14 @@
+import { randomInt } from "node:crypto";
 import type { ChangedBy, Order, OrderStatus } from "@mydoners/shared-contracts";
 import { orderRepository, type NewOrderItemInput } from "../repositories/orderRepository";
 import { productRepository } from "../repositories/productRepository";
 import { userRepository } from "../repositories/userRepository";
-import { ConflictError, NotFoundError, ValidationError } from "../errors/AppError";
+import { CodBlockedError, ConflictError, NotFoundError, ValidationError } from "../errors/AppError";
 import { realtime } from "../ws/socket";
 import type { CreateOrderInput } from "../dto/order.dto";
 import type { orders } from "../db/schema";
+import { scoreOrderRisk } from "./riskService";
+import type { RiskAssessment } from "@mydoners/shared-contracts";
 
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
@@ -49,9 +52,15 @@ function toApiOrder(order: OrderRow, items: OrderItemRow[]): Order {
     landmarkAddress: order.landmarkAddress,
     courierNotes: order.courierNotes,
     riskLevel: order.riskLevel as Order["riskLevel"],
+    cashConfirmationCode: order.cashConfirmationCode,
+    deliveryProofPhotoUrl: order.deliveryProofPhotoUrl,
     createdAt: order.createdAt!.toISOString(),
     updatedAt: order.updatedAt!.toISOString(),
   };
+}
+
+function generateCashConfirmationCode(): string {
+  return String(randomInt(0, 100)).padStart(2, "0");
 }
 
 export const orderService = {
@@ -93,8 +102,34 @@ export const orderService = {
       });
     }
 
-    // Phase 1 has no anti-fraud gate — every order is auto-confirmed. Phase 2's
-    // risk-scoring service will insert a decision point here.
+    const user = await userRepository.findByTelegramId(telegramId);
+    if (!user) throw new Error(`User ${telegramId} not found — should have been created at login`);
+
+    // Risk scoring only applies to Cash on Delivery — Click/Payme orders are
+    // prepaid and carry no CoD risk. See services/riskService.ts and the
+    // roadmap's Phase 2 section.
+    let riskLevel: Order["riskLevel"] = null;
+    if (input.paymentType === "CASH") {
+      const assessment = scoreOrderRisk({
+        completedOrdersCount: user.completedOrdersCount ?? 0,
+        cancelledOrdersCount: user.cancelledOrdersCount ?? 0,
+        isBlacklisted: user.isBlacklisted ?? false,
+        isPhoneVerified: user.isPhoneVerified ?? false,
+        orderTotalAmount: totalAmount,
+      });
+
+      if (assessment.action === "COD_BLOCKED") {
+        throw new CodBlockedError(
+          "Cash on Delivery isn't available for this order — please pay via Click or Payme.",
+        );
+      }
+      riskLevel = assessment.riskLevel;
+    }
+
+    // No PENDING hold for MEDIUM risk — the order goes straight to the
+    // kitchen either way. OTP / verbal confirmation (KDS badge) are
+    // verification signals layered on top, not a gate on cooking start;
+    // see docs/decisions.md's Phase 2 notes for why.
     const orderId = await orderRepository.create({
       userId: telegramId,
       status: "CONFIRMED",
@@ -104,17 +139,16 @@ export const orderService = {
       longitude: input.longitude,
       landmarkAddress: input.landmarkAddress,
       courierNotes: input.courierNotes ?? null,
+      riskLevel,
       items: resolvedItems,
     });
 
     const created = await orderRepository.findById(orderId);
     if (!created) throw new Error("Order vanished immediately after creation");
 
-    const user = await userRepository.findByTelegramId(telegramId);
-
     realtime.orderCreated(orderId, {
       status: created.order.status,
-      customerName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Unknown",
+      customerName: [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unknown",
       items: created.items.map((item) => ({
         productName: item.productName,
         selectedVariant: item.selectedVariant,
@@ -130,6 +164,21 @@ export const orderService = {
       riskLevel: created.order.riskLevel,
     });
 
+    if (riskLevel === "MEDIUM" || riskLevel === "HIGH") {
+      const assessment = scoreOrderRisk({
+        completedOrdersCount: user.completedOrdersCount ?? 0,
+        cancelledOrdersCount: user.cancelledOrdersCount ?? 0,
+        isBlacklisted: user.isBlacklisted ?? false,
+        isPhoneVerified: user.isPhoneVerified ?? false,
+        orderTotalAmount: totalAmount,
+      });
+      realtime.orderRiskFlagged(orderId, telegramId, {
+        riskLevel: assessment.riskLevel as "MEDIUM" | "HIGH",
+        reason: assessment.reason as "FIRST_ORDER_HIGH_VALUE" | "REPEAT_CANCELLATIONS",
+        action: assessment.action as "OTP_REQUIRED" | "VERBAL_CONFIRMATION_REQUIRED" | "COD_BLOCKED",
+      });
+    }
+
     return toApiOrder(created.order, created.items);
   },
 
@@ -137,6 +186,29 @@ export const orderService = {
     const result = await orderRepository.findById(orderId);
     if (!result) throw new NotFoundError(`Order ${orderId} not found`);
     return toApiOrder(result.order, result.items);
+  },
+
+  // Backs GET /orders/:orderId/risk. Recomputes from the customer's current
+  // stats rather than persisting the original reason/action — riskLevel
+  // itself is frozen at order-creation time (see createOrder), but the
+  // human-readable reason/action are cheap to recompute and stay accurate if
+  // this is queried later. CoD-only, matching createOrder's gating.
+  async getRiskAssessment(orderId: number): Promise<RiskAssessment> {
+    const result = await orderRepository.findById(orderId);
+    if (!result) throw new NotFoundError(`Order ${orderId} not found`);
+
+    if (result.order.paymentType !== "CASH" || !result.order.riskLevel) {
+      return { riskLevel: "LOW", reason: "LOW_VALUE_ORDER", action: "NONE" };
+    }
+
+    const user = await userRepository.findByTelegramId(result.order.userId!);
+    return scoreOrderRisk({
+      completedOrdersCount: user?.completedOrdersCount ?? 0,
+      cancelledOrdersCount: user?.cancelledOrdersCount ?? 0,
+      isBlacklisted: user?.isBlacklisted ?? false,
+      isPhoneVerified: user?.isPhoneVerified ?? false,
+      orderTotalAmount: Number(result.order.totalAmount),
+    });
   },
 
   // Backs GET /orders?status=... — see docs/openapi.yaml. Used by the KDS
@@ -157,6 +229,14 @@ export const orderService = {
         currentStatus,
         requestedStatus: newStatus,
       });
+    }
+
+    if (
+      newStatus === "READY_FOR_DELIVERY" &&
+      existing.order.paymentType === "CASH" &&
+      existing.order.paymentStatus === "UNPAID"
+    ) {
+      await orderRepository.setCashConfirmationCode(orderId, generateCashConfirmationCode());
     }
 
     const result = await orderRepository.updateStatus(orderId, newStatus, changedBy);
@@ -196,10 +276,28 @@ export const orderService = {
       await userRepository.incrementCompletedOrders(userId);
       realtime.deliveryConfirmed(orderId, userId, {
         deliveredAt: new Date().toISOString(),
-        proofPhotoUrl: null, // Phase 2 — delivery-proof photo capture
+        proofPhotoUrl: existing.order.deliveryProofPhotoUrl,
       });
     }
 
     return this.getOrder(orderId);
+  },
+
+  // Backs POST /orders/:orderId/delivery-proof — the courier's "Delivered"
+  // action. For CASH orders, the customer reads back the 2-digit code
+  // generated when the order left the kitchen; mismatches are rejected so a
+  // courier can't mark cash as collected without the customer's confirmation.
+  async confirmDelivery(orderId: number, photoUrl: string, submittedCashCode: string | null): Promise<Order> {
+    const existing = await orderRepository.findById(orderId);
+    if (!existing) throw new NotFoundError(`Order ${orderId} not found`);
+
+    if (existing.order.paymentType === "CASH" && existing.order.paymentStatus === "UNPAID") {
+      if (!submittedCashCode || submittedCashCode !== existing.order.cashConfirmationCode) {
+        throw new ValidationError("Cash confirmation code does not match", { orderId });
+      }
+    }
+
+    await orderRepository.setDeliveryProof(orderId, photoUrl);
+    return this.updateStatus(orderId, "DELIVERED", "COURIER");
   },
 };

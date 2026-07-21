@@ -50,6 +50,8 @@ export interface Order {
   landmarkAddress: string;
   courierNotes: string | null;
   riskLevel: RiskLevel;
+  cashConfirmationCode: string | null;
+  deliveryProofPhotoUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,6 +74,15 @@ export interface OrderRiskFlaggedData {
   riskLevel: Exclude<RiskLevel, "LOW" | null>;
   reason: "FIRST_ORDER_HIGH_VALUE" | "REPEAT_CANCELLATIONS";
   action: "OTP_REQUIRED" | "VERBAL_CONFIRMATION_REQUIRED" | "COD_BLOCKED";
+}
+
+export type RiskReason = "TRUSTED_CUSTOMER" | "FIRST_ORDER_HIGH_VALUE" | "REPEAT_CANCELLATIONS" | "LOW_VALUE_ORDER";
+export type RiskAction = "NONE" | "OTP_REQUIRED" | "VERBAL_CONFIRMATION_REQUIRED" | "COD_BLOCKED";
+
+export interface RiskAssessment {
+  riskLevel: RiskLevel;
+  reason: RiskReason;
+  action: RiskAction;
 }
 
 export interface OrderCreatedData {

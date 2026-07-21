@@ -1,7 +1,7 @@
 import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { orderItems, orderLogs, orders, products } from "../db/schema";
-import type { ChangedBy, OrderStatus, PaymentType } from "@mydoners/shared-contracts";
+import type { ChangedBy, OrderStatus, PaymentType, RiskLevel } from "@mydoners/shared-contracts";
 
 export interface NewOrderItemInput {
   productId: number;
@@ -25,6 +25,7 @@ export interface NewOrderInput {
   longitude: number;
   landmarkAddress: string;
   courierNotes: string | null;
+  riskLevel: RiskLevel;
   items: NewOrderItemInput[];
 }
 
@@ -43,6 +44,7 @@ export const orderRepository = {
           longitude: input.longitude,
           landmarkAddress: input.landmarkAddress,
           courierNotes: input.courierNotes,
+          riskLevel: input.riskLevel,
         })
         .returning();
 
@@ -123,6 +125,14 @@ export const orderRepository = {
       order,
       items: items.filter((item) => item.orderId === order.id),
     }));
+  },
+
+  async setCashConfirmationCode(id: number, code: string) {
+    await db.update(orders).set({ cashConfirmationCode: code }).where(eq(orders.id, id));
+  },
+
+  async setDeliveryProof(id: number, photoUrl: string) {
+    await db.update(orders).set({ deliveryProofPhotoUrl: photoUrl }).where(eq(orders.id, id));
   },
 
   async updateStatus(id: number, newStatus: OrderStatus, changedBy: ChangedBy) {

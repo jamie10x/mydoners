@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import type { OrderStatus } from "@mydoners/shared-contracts";
 import { orderService } from "../services/orderService";
-import { createOrderSchema, updateOrderStatusSchema } from "../dto/order.dto";
+import { otpService } from "../services/otpService";
+import { createOrderSchema, updateOrderStatusSchema, verifyOtpSchema } from "../dto/order.dto";
 import { ForbiddenError, ValidationError } from "../errors/AppError";
 
 const VALID_STATUSES: OrderStatus[] = [
@@ -58,6 +59,37 @@ export const orderController = {
   async dispatch(req: Request, res: Response) {
     const orderId = Number(req.params.orderId);
     const order = await orderService.updateStatus(orderId, "READY_FOR_DELIVERY", "KITCHEN");
+    res.json(order);
+  },
+
+  async getRisk(req: Request, res: Response) {
+    const orderId = Number(req.params.orderId);
+    res.json(await orderService.getRiskAssessment(orderId));
+  },
+
+  async requestOtp(req: Request, res: Response) {
+    const orderId = Number(req.params.orderId);
+    await otpService.requestOtp(orderId);
+    res.status(202).end();
+  },
+
+  async verifyOtp(req: Request, res: Response) {
+    const orderId = Number(req.params.orderId);
+    const parsed = verifyOtpSchema.safeParse(req.body);
+    if (!parsed.success) throw new ValidationError("Invalid OTP payload", { issues: parsed.error.issues });
+
+    const verified = await otpService.verifyOtp(orderId, parsed.data.code);
+    if (!verified) throw new ValidationError("Invalid or expired code", { orderId });
+    res.status(200).end();
+  },
+
+  async deliveryProof(req: Request, res: Response) {
+    const orderId = Number(req.params.orderId);
+    const file = req.file;
+    if (!file) throw new ValidationError("Delivery-proof photo is required");
+
+    const photoUrl = `/uploads/delivery-proof/${file.filename}`;
+    const order = await orderService.confirmDelivery(orderId, photoUrl, req.body.cashConfirmationCode ?? null);
     res.json(order);
   },
 };

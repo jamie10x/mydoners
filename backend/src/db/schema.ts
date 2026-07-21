@@ -60,6 +60,11 @@ export const orders = pgTable("orders", {
   landmarkAddress: text("landmark_address").notNull(),
   courierNotes: text("courier_notes"),
   riskLevel: varchar("risk_level", { length: 10 }), // LOW | MEDIUM | HIGH | null — Phase 2
+  // Phase 2 — courier delivery-proof flow. Code is generated when an order
+  // becomes READY_FOR_DELIVERY for CASH orders; courier must have the
+  // customer read it back on arrival before cash collection is confirmed.
+  cashConfirmationCode: varchar("cash_confirmation_code", { length: 2 }),
+  deliveryProofPhotoUrl: text("delivery_proof_photo_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

@@ -44,4 +44,11 @@ export const userRepository = {
       .set({ cancelledOrdersCount: sql`${users.cancelledOrdersCount} + 1` })
       .where(eq(users.telegramId, telegramId));
   },
+
+  async setPhoneVerified(telegramId: number, phoneNumber: string) {
+    await db
+      .update(users)
+      .set({ phoneNumber, isPhoneVerified: true })
+      .where(eq(users.telegramId, telegramId));
+  },
 };
