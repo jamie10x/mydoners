@@ -7,9 +7,11 @@
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "migrate:generate": "drizzle-kit generate",
-    "migrate": "bun run src/db/migrate.ts"
+    "migrate": "bun run src/db/migrate.ts",
+    "seed": "bun run src/db/seed.ts"
   },
   "dependencies": {
+    "@mydoners/shared-contracts": "workspace:*",
     "drizzle-orm": "^0.36.4",
     "express": "^4.21.1",
     "postgres": "^3.4.5",

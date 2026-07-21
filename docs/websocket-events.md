@@ -1,12 +1,12 @@
 # WebSocket Event Catalog
 
-Transport: [Socket.io](./decisions.md#1-websocket-implementation--socketio) server hosted by the backend. All three real-time clients (Mini App, Android KDS, Courier Bot) connect as Socket.io clients over a single namespace: `/realtime`.
+Transport: [Socket.io](./decisions.md#1-websocket-implementation--socketio) server hosted by the backend, mounted at HTTP path `/realtime` (Socket.io's `path` option — this is the transport endpoint, distinct from a Socket.io "namespace"; all clients connect to the default `/` namespace at this path). All three real-time clients (Mini App, Android KDS, Courier Bot) connect as Socket.io clients this way.
 
 This document is the frozen source of truth for event names and payload shapes. Any change here must be reflected in the backend emitter, the Mini App listener, the Kotlin KDS data classes, and the Courier Bot listener at the same time — treat it as a breaking-change surface, not a place for silent additions.
 
 ## Connection & auth
 
-- Clients connect with `io("/realtime", { auth: { token } })`.
+- Clients connect with `io(BACKEND_URL, { path: "/realtime", auth: { token } })`.
 - `token` is:
   - Mini App: the JWT issued by `POST /auth/telegram` (see [auth-contract.md](./auth-contract.md)).
   - Android KDS: the long-lived device API key issued out-of-band for the single kitchen tablet.

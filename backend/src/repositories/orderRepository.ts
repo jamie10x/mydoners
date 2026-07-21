@@ -1,0 +1,115 @@
+import { eq } from "drizzle-orm";
+import { db } from "../db";
+import { orderItems, orderLogs, orders, products } from "../db/schema";
+import type { ChangedBy, OrderStatus, PaymentType } from "@mydoners/shared-contracts";
+
+export interface NewOrderItemInput {
+  productId: number;
+  selectedVariant: string | null;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface NewOrderInput {
+  userId: number;
+  // Phase 1 has no anti-fraud gate, so orders are created straight into
+  // CONFIRMED. Phase 2's risk-scoring service will pass "PENDING" here
+  // instead when a MEDIUM/HIGH-risk order needs to hold before the kitchen
+  // sees it (OTP / verbal confirmation) — see docs/decisions.md and the
+  // roadmap's Phase 2 section.
+  status: OrderStatus;
+  totalAmount: number;
+  paymentType: PaymentType;
+  latitude: number;
+  longitude: number;
+  landmarkAddress: string;
+  courierNotes: string | null;
+  items: NewOrderItemInput[];
+}
+
+export const orderRepository = {
+  async create(input: NewOrderInput) {
+    return db.transaction(async (tx) => {
+      const [order] = await tx
+        .insert(orders)
+        .values({
+          userId: input.userId,
+          status: input.status,
+          totalAmount: input.totalAmount.toFixed(2),
+          paymentType: input.paymentType,
+          paymentStatus: "UNPAID",
+          latitude: input.latitude,
+          longitude: input.longitude,
+          landmarkAddress: input.landmarkAddress,
+          courierNotes: input.courierNotes,
+        })
+        .returning();
+
+      if (!order) throw new Error("Failed to insert order");
+
+      await tx.insert(orderItems).values(
+        input.items.map((item) => ({
+          orderId: order.id,
+          productId: item.productId,
+          selectedVariant: item.selectedVariant,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice.toFixed(2),
+          totalPrice: item.totalPrice.toFixed(2),
+        })),
+      );
+
+      await tx.insert(orderLogs).values({
+        orderId: order.id,
+        previousStatus: null,
+        newStatus: input.status,
+        changedBy: "SYSTEM",
+      });
+
+      return order.id;
+    });
+  },
+
+  async findById(id: number) {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    if (!order) return null;
+
+    const items = await db
+      .select({
+        id: orderItems.id,
+        productId: orderItems.productId,
+        productName: products.name,
+        selectedVariant: orderItems.selectedVariant,
+        quantity: orderItems.quantity,
+        unitPrice: orderItems.unitPrice,
+        totalPrice: orderItems.totalPrice,
+      })
+      .from(orderItems)
+      .innerJoin(products, eq(orderItems.productId, products.id))
+      .where(eq(orderItems.orderId, id));
+
+    return { order, items };
+  },
+
+  async updateStatus(id: number, newStatus: OrderStatus, changedBy: ChangedBy) {
+    return db.transaction(async (tx) => {
+      const [current] = await tx.select().from(orders).where(eq(orders.id, id));
+      if (!current) return null;
+
+      const [updated] = await tx
+        .update(orders)
+        .set({ status: newStatus, updatedAt: new Date() })
+        .where(eq(orders.id, id))
+        .returning();
+
+      await tx.insert(orderLogs).values({
+        orderId: id,
+        previousStatus: current.status,
+        newStatus,
+        changedBy,
+      });
+
+      return { order: updated!, previousStatus: current.status };
+    });
+  },
+};
