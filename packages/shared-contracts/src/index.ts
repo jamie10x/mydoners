@@ -73,3 +73,43 @@ export interface OrderRiskFlaggedData {
   reason: "FIRST_ORDER_HIGH_VALUE" | "REPEAT_CANCELLATIONS";
   action: "OTP_REQUIRED" | "VERBAL_CONFIRMATION_REQUIRED" | "COD_BLOCKED";
 }
+
+export interface OrderCreatedData {
+  status: "PENDING" | "CONFIRMED";
+  customerName: string;
+  items: Array<{
+    productName: string;
+    selectedVariant: string | null;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }>;
+  totalAmount: number;
+  paymentType: PaymentType;
+  paymentStatus: PaymentStatus;
+  landmarkAddress: string;
+  courierNotes: string | null;
+  riskLevel: RiskLevel;
+}
+
+export interface OrderCancelledData {
+  cancelledBy: ChangedBy;
+  reason: string | null;
+}
+
+export interface CourierAssignedData {
+  customerName: string;
+  customerPhone: string | null;
+  latitude: number;
+  longitude: number;
+  landmarkAddress: string;
+  paymentType: PaymentType;
+  paymentStatus: PaymentStatus;
+  amountToCollect: number;
+  courierNotes: string | null;
+}
+
+export interface DeliveryConfirmedData {
+  deliveredAt: string;
+  proofPhotoUrl: string | null;
+}
