@@ -24,4 +24,23 @@ export const backendClient = {
       body: JSON.stringify({ status, changedBy }),
     });
   },
+
+  async confirmDelivery(orderId: number, photo: Blob, cashConfirmationCode: string | null): Promise<Order> {
+    const form = new FormData();
+    form.append("photo", photo, "delivery-proof.jpg");
+    if (cashConfirmationCode) form.append("cashConfirmationCode", cashConfirmationCode);
+
+    // Don't set Content-Type manually — fetch computes the multipart boundary
+    // itself when given a FormData body.
+    const res = await fetch(`${env.backendUrl}/orders/${orderId}/delivery-proof`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.courierBotApiKey}` },
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Backend request failed: ${res.status} /orders/${orderId}/delivery-proof — ${body}`);
+    }
+    return res.json() as Promise<Order>;
+  },
 };

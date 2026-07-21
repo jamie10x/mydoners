@@ -3,6 +3,7 @@ import { env } from "./config/env";
 import { registerCallbackHandlers } from "./handlers/callbacks";
 import { connectToBackend } from "./ws/socketClient";
 import { formatOrderCard, orderKeyboard } from "./orderCard";
+import { courierState } from "./state/pendingDeliveries";
 
 const bot = new Bot(env.botToken);
 
@@ -10,6 +11,7 @@ registerCallbackHandlers(bot);
 
 connectToBackend((payload) => {
   const { orderId, data } = payload;
+  courierState.recordAssignment(orderId, data);
   bot.api
     .sendMessage(env.courierChatId, formatOrderCard(orderId, data), {
       parse_mode: "HTML",
