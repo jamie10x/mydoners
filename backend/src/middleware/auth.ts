@@ -20,6 +20,11 @@ export function verifyTelegramInitData(initData: string, botToken: string): Tele
   const params = new URLSearchParams(initData);
   const hash = params.get("hash");
   params.delete("hash");
+  // Telegram clients also send a "signature" field (Ed25519, for a separate
+  // third-party validation path) — it must be excluded from the HMAC
+  // data-check-string just like "hash", or verification fails for every
+  // real Telegram client. See docs/auth-contract.md #1.
+  params.delete("signature");
 
   const dataCheckString = [...params.entries()]
     .sort(([a], [b]) => a.localeCompare(b))

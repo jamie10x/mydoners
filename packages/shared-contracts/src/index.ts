@@ -113,3 +113,32 @@ export interface DeliveryConfirmedData {
   deliveredAt: string;
   proofPhotoUrl: string | null;
 }
+
+export interface PublicUser {
+  telegramId: number;
+  firstName: string;
+  lastName: string | null;
+  username: string | null;
+  isPhoneVerified: boolean;
+  completedOrdersCount: number;
+  isBlacklisted: boolean;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  displayOrder: number;
+}
+
+export interface Product {
+  id: number;
+  categoryId: number;
+  name: string;
+  description: string | null;
+  basePrice: number | string;
+  hasMeatChoice: boolean;
+  beefPrice: number | string | null;
+  chickenPrice: number | string | null;
+  isAvailable: boolean;
+  imageUrl: string | null;
+}
