@@ -139,6 +139,14 @@ export const orderService = {
     return toApiOrder(result.order, result.items);
   },
 
+  // Backs GET /orders?status=... — see docs/openapi.yaml. Used by the KDS
+  // app on launch/reconnect to recover its work queue, since WebSocket
+  // events emitted while disconnected are otherwise lost.
+  async listByStatus(statuses: OrderStatus[]): Promise<Order[]> {
+    const results = await orderRepository.listByStatus(statuses);
+    return results.map(({ order, items }) => toApiOrder(order, items));
+  },
+
   async updateStatus(orderId: number, newStatus: OrderStatus, changedBy: ChangedBy): Promise<Order> {
     const existing = await orderRepository.findById(orderId);
     if (!existing) throw new NotFoundError(`Order ${orderId} not found`);

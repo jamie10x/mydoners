@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { orderItems, orderLogs, orders, products } from "../db/schema";
 import type { ChangedBy, OrderStatus, PaymentType } from "@mydoners/shared-contracts";
@@ -89,6 +89,40 @@ export const orderRepository = {
       .where(eq(orderItems.orderId, id));
 
     return { order, items };
+  },
+
+  // Lets the KDS tablet (and, later, the courier bot) recover an accurate
+  // work queue on cold start / reconnect instead of relying solely on
+  // WebSocket events that may have been missed while disconnected.
+  async listByStatus(statuses: OrderStatus[]) {
+    const matchingOrders = await db
+      .select()
+      .from(orders)
+      .where(inArray(orders.status, statuses))
+      .orderBy(desc(orders.createdAt));
+
+    if (matchingOrders.length === 0) return [];
+
+    const orderIds = matchingOrders.map((o) => o.id);
+    const items = await db
+      .select({
+        id: orderItems.id,
+        orderId: orderItems.orderId,
+        productId: orderItems.productId,
+        productName: products.name,
+        selectedVariant: orderItems.selectedVariant,
+        quantity: orderItems.quantity,
+        unitPrice: orderItems.unitPrice,
+        totalPrice: orderItems.totalPrice,
+      })
+      .from(orderItems)
+      .innerJoin(products, eq(orderItems.productId, products.id))
+      .where(inArray(orderItems.orderId, orderIds));
+
+    return matchingOrders.map((order) => ({
+      order,
+      items: items.filter((item) => item.orderId === order.id),
+    }));
   },
 
   async updateStatus(id: number, newStatus: OrderStatus, changedBy: ChangedBy) {

@@ -1,9 +1,35 @@
 import type { Request, Response } from "express";
+import type { OrderStatus } from "@mydoners/shared-contracts";
 import { orderService } from "../services/orderService";
 import { createOrderSchema, updateOrderStatusSchema } from "../dto/order.dto";
 import { ForbiddenError, ValidationError } from "../errors/AppError";
 
+const VALID_STATUSES: OrderStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "COOKING",
+  "READY_FOR_DELIVERY",
+  "ON_THE_WAY",
+  "DELIVERED",
+  "CANCELLED",
+];
+const DEFAULT_ACTIVE_STATUSES: OrderStatus[] = ["CONFIRMED", "COOKING", "READY_FOR_DELIVERY"];
+
 export const orderController = {
+  async list(req: Request, res: Response) {
+    const statusParam = req.query.status;
+    const requested = typeof statusParam === "string" ? statusParam.split(",") : null;
+    const statuses = requested
+      ? requested.filter((s): s is OrderStatus => VALID_STATUSES.includes(s as OrderStatus))
+      : DEFAULT_ACTIVE_STATUSES;
+
+    if (requested && statuses.length !== requested.length) {
+      throw new ValidationError("Invalid status value in query param", { statusParam });
+    }
+
+    res.json(await orderService.listByStatus(statuses));
+  },
+
   async create(req: Request, res: Response) {
     if (req.actor?.type !== "user") {
       throw new ForbiddenError("Only Mini App customers can place orders");

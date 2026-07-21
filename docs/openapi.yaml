@@ -92,6 +92,32 @@ paths:
                 $ref: "#/components/schemas/PaginatedProducts"
 
   /orders:
+    get:
+      tags: [orders]
+      summary: List orders by status
+      description: >
+        Added during Track C (Android KDS) implementation — the KDS tablet
+        needs to recover its work queue on app launch/reconnect, since
+        WebSocket events emitted while disconnected are otherwise lost.
+        Defaults to the three "active" statuses (CONFIRMED, COOKING,
+        READY_FOR_DELIVERY) if `status` is omitted.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Comma-separated OrderStatus values, e.g. "COOKING,READY_FOR_DELIVERY"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/ValidationError"
     post:
       tags: [orders]
       summary: Create a new order (customer checkout)
