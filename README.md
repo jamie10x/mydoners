@@ -39,11 +39,13 @@ Each subproject has its own `.env.example` — copy to `.env` and fill in secret
 
 ## Status
 
-Phase 0 (contracts & foundations) and Phase 1 (happy-path buildout across all four tracks) are done — every track has been run and verified against the real backend, not just compiled:
+Phase 0 (contracts & foundations), Phase 1 (happy-path buildout), and Phase 2 (anti-fraud/CoD risk engine + payments) are done — every piece has been run and verified against the real backend, not just compiled:
 
-- **Backend**: auth, catalog, order creation/pricing/modifier validation, the full order status state machine, and Socket.io event emission — exercised end-to-end with real HTTP/WS calls.
-- **Mini App**: menu → forced modifier choice → cart → checkout (GPS + landmark) → order creation → live status tracker, verified in a browser against the real backend.
-- **Android KDS**: built and run on an emulator against the live backend — device-key auth, work-queue recovery on launch, live WebSocket order updates, the continuous alarm starting/stopping correctly, and Accept/Ready actions moving real orders through the backend.
-- **Courier Bot**: the WebSocket dispatch trigger (`courier.assigned`) and bot-authenticated status updates verified live against the backend. Telegram send/receive itself is untested — it needs a real `COURIER_BOT_TOKEN` and courier chat id, which are user-supplied secrets.
+- **Backend**: auth, catalog, order creation/pricing/modifier validation, the full order status state machine, Socket.io event emission, the three-tier CoD risk engine (LOW/MEDIUM/HIGH), phone verification, Redis-backed OTP, and the courier delivery-proof + cash-confirmation-code flow — all exercised end-to-end with real HTTP/WS calls, including synthetic user histories driving each risk tier.
+- **Mini App**: menu → forced modifier choice → cart → checkout (GPS + landmark, all three payment methods, phone verification prompt) → order creation → live status tracker with optional OTP self-verification and cash-code display, verified in a browser against the real backend.
+- **Android KDS**: built and run on an emulator against the live backend — device-key auth, work-queue recovery on launch, live WebSocket order updates, the continuous alarm starting/stopping correctly, Accept/Ready actions moving real orders through the backend, and the MEDIUM-risk "Needs Verbal Confirmation" badge.
+- **Courier Bot**: the WebSocket dispatch trigger (`courier.assigned`), bot-authenticated status updates, and the delivery-proof photo + cash-code submission verified live against the backend. Telegram send/receive itself is untested — it needs a real `COURIER_BOT_TOKEN` and courier chat id, which are user-supplied secrets.
 
-See `docs/decisions.md` for defaults chosen along the way and `docs/` generally for the contracts. Next up is Phase 2 (anti-fraud/CoD risk engine + Click/Payme integration), then Phase 3 (deployment) — see the execution roadmap (the plan file this repo was scaffolded from) for the full phased sequence.
+Two pieces are honest stubs, not fake integrations: SMS OTP delivery (`StubSmsProvider`, pending real Eskiz.uz credentials) and Click/Payme payment processing (`StubPaymentProvider`, pending real merchant accounts — registration/KYC approval is the actual bottleneck, not implementation). Both sit behind interfaces so swapping in real implementations doesn't touch the rest of the app. See `docs/decisions.md` for the full reasoning.
+
+Next up is Phase 3 (deployment) — see the execution roadmap (the plan file this repo was scaffolded from) for the full phased sequence.

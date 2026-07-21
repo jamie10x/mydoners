@@ -594,6 +594,17 @@ components:
           nullable: true
         riskLevel:
           $ref: "#/components/schemas/RiskLevel"
+        cashConfirmationCode:
+          type: string
+          nullable: true
+          description: >
+            2-digit code generated when a CASH order becomes READY_FOR_DELIVERY,
+            shown to the customer to read back to the courier before delivery
+            is confirmed. Null for CLICK/PAYME orders (already paid).
+        deliveryProofPhotoUrl:
+          type: string
+          nullable: true
+          description: Set once the courier submits delivery-proof via POST /orders/:orderId/delivery-proof.
         createdAt:
           type: string
           format: date-time
