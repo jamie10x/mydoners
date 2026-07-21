@@ -1,0 +1,9 @@
+{
+  "name": "@mydoners/shared-contracts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Hand-written TS types shared by backend, mini-app, and courier-bot. Source of truth is docs/openapi.yaml and docs/websocket-events.md — Android KDS mirrors these manually in Kotlin (see docs/decisions.md #8).",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@mydoners/mini-app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Track B (Phase 1) — Telegram Mini App. Not yet scaffolded; see docs/ for the contracts this will be built against.",
+  "scripts": {
+    "dev": "echo 'mini-app not yet scaffolded — Phase 1, Track B' && exit 1"
+  }
+}

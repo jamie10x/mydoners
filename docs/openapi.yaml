@@ -1,0 +1,588 @@
+openapi: 3.0.3
+info:
+  title: MyDoners API
+  description: >
+    Central backend API for the MyDoners ordering platform. Consumed by the
+    Telegram Mini App, the Android KDS app, and the Courier Bot. See
+    docs/websocket-events.md for the real-time event catalog that complements
+    this REST contract, and docs/auth-contract.md for the auth flows referenced
+    below.
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: auth
+  - name: catalog
+  - name: orders
+  - name: anti-fraud
+  - name: courier
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/telegram:
+    post:
+      tags: [auth]
+      summary: Exchange Telegram initData for a session JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [initData]
+              properties:
+                initData:
+                  type: string
+                  description: Raw initData query string from the Telegram Mini App SDK
+      responses:
+        "200":
+          description: Verified — session issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, user]
+                properties:
+                  token:
+                    type: string
+                    description: JWT, 24h expiry — see docs/auth-contract.md
+                  user:
+                    $ref: "#/components/schemas/PublicUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /categories:
+    get:
+      tags: [catalog]
+      summary: List menu categories
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /products:
+    get:
+      tags: [catalog]
+      summary: List menu products
+      parameters:
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+          description: Filter by category
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedProducts"
+
+  /orders:
+    post:
+      tags: [orders]
+      summary: Create a new order (customer checkout)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            Cash on Delivery blocked for this user (HIGH risk — see anti-fraud
+            engine, Phase 2). Response body indicates required payment method.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /orders/{orderId}:
+    get:
+      tags: [orders]
+      summary: Get order details
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orders/{orderId}/status:
+    patch:
+      tags: [orders]
+      summary: Transition an order's status
+      description: >
+        Used by the Android KDS app (CONFIRMED → COOKING → READY_FOR_DELIVERY,
+        or → CANCELLED) and the Courier Bot (READY_FOR_DELIVERY → ON_THE_WAY →
+        DELIVERED). Every successful transition writes an order_logs row and
+        emits order.status_changed over WebSocket.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, changedBy]
+              properties:
+                status:
+                  $ref: "#/components/schemas/OrderStatus"
+                changedBy:
+                  type: string
+                  enum: [KITCHEN, COURIER, USER, SYSTEM]
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "409":
+          description: Invalid status transition (e.g. DELIVERED → COOKING)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{telegramId}/phone-verify:
+    post:
+      tags: [anti-fraud]
+      summary: Submit a Telegram-verified contact for phone verification
+      description: >
+        Phase 2. Called after the Mini App's native Telegram contact-request
+        widget returns a carrier-verified phone number — this endpoint does
+        not accept a manually-typed number.
+      parameters:
+        - name: telegramId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneNumber, telegramContactPayload]
+              properties:
+                phoneNumber:
+                  type: string
+                telegramContactPayload:
+                  type: string
+                  description: Raw contact-share payload from Telegram, for server-side validation
+      responses:
+        "200":
+          description: Phone verified and stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isPhoneVerified:
+                    type: boolean
+
+  /orders/{orderId}/risk:
+    get:
+      tags: [anti-fraud]
+      summary: Get the anti-fraud risk assessment for an order
+      description: Phase 2. Backing data for order.risk_flagged WebSocket event.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskAssessment"
+
+  /orders/{orderId}/otp/request:
+    post:
+      tags: [anti-fraud]
+      summary: Trigger an SMS OTP for a MEDIUM-risk CoD order
+      description: Phase 2. Provider-agnostic — see docs/decisions.md #2.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "202":
+          description: OTP dispatched
+
+  /orders/{orderId}/otp/verify:
+    post:
+      tags: [anti-fraud]
+      summary: Verify an SMS OTP code for a MEDIUM-risk CoD order
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 4
+                  maxLength: 6
+      responses:
+        "200":
+          description: OTP verified — order proceeds to kitchen
+        "400":
+          description: Invalid or expired code
+
+  /orders/{orderId}/dispatch:
+    patch:
+      tags: [courier]
+      summary: Mark an order ready for courier dispatch (kitchen-side trigger)
+      description: >
+        Convenience alias over /orders/{orderId}/status with status=READY_FOR_DELIVERY,
+        exposed separately so the KDS client doesn't need to construct the generic
+        status payload for this specific, high-frequency transition.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: Order dispatched to courier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{orderId}/delivery-proof:
+    post:
+      tags: [courier]
+      summary: Upload delivery-proof photo and confirm cash collection
+      description: Phase 2. Called by the Courier Bot on "Delivered" tap.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo:
+                  type: string
+                  format: binary
+                cashConfirmationCode:
+                  type: string
+                  description: 2-digit code shown in the customer's Telegram app, required for CASH orders
+      responses:
+        "200":
+          description: Delivery confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Cash confirmation code mismatch
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT / device API key / bot shared secret — see docs/auth-contract.md
+
+  parameters:
+    OrderIdParam:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: integer
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 50
+        maximum: 100
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ValidationError:
+      description: Request failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      description: >
+        Consistent error shape across every endpoint. `code` is a stable
+        machine-readable identifier (matches the AppError sealed-type naming
+        used in native clients); `message` is safe to show to kitchen/courier
+        staff but not necessarily to end customers without translation.
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNAUTHORIZED
+            - FORBIDDEN
+            - NOT_FOUND
+            - CONFLICT
+            - COD_BLOCKED
+            - SERVER_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    OrderStatus:
+      type: string
+      enum:
+        - PENDING
+        - CONFIRMED
+        - COOKING
+        - READY_FOR_DELIVERY
+        - ON_THE_WAY
+        - DELIVERED
+        - CANCELLED
+
+    PaymentType:
+      type: string
+      enum: [CASH, CLICK, PAYME]
+
+    PaymentStatus:
+      type: string
+      enum: [UNPAID, PAID]
+
+    RiskLevel:
+      type: string
+      enum: [LOW, MEDIUM, HIGH]
+      nullable: true
+
+    PublicUser:
+      type: object
+      properties:
+        telegramId:
+          type: integer
+          format: int64
+        firstName:
+          type: string
+        lastName:
+          type: string
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        isPhoneVerified:
+          type: boolean
+        completedOrdersCount:
+          type: integer
+        isBlacklisted:
+          type: boolean
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        displayOrder:
+          type: integer
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        categoryId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        basePrice:
+          type: number
+        hasMeatChoice:
+          type: boolean
+        beefPrice:
+          type: number
+          nullable: true
+        chickenPrice:
+          type: number
+          nullable: true
+        isAvailable:
+          type: boolean
+        imageUrl:
+          type: string
+          nullable: true
+
+    PaginatedProducts:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    OrderItemInput:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+        selectedVariant:
+          type: string
+          nullable: true
+          description: Required if the product has_meat_choice (e.g. "Beef" | "Chicken")
+        quantity:
+          type: integer
+          minimum: 1
+
+    CreateOrderRequest:
+      type: object
+      required: [items, paymentType, latitude, longitude, landmarkAddress]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OrderItemInput"
+        paymentType:
+          $ref: "#/components/schemas/PaymentType"
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        landmarkAddress:
+          type: string
+          description: Apartment/gate/landmark free-text, required alongside GPS pin
+        courierNotes:
+          type: string
+          nullable: true
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        selectedVariant:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        totalPrice:
+          type: number
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        totalAmount:
+          type: number
+        paymentType:
+          $ref: "#/components/schemas/PaymentType"
+        paymentStatus:
+          $ref: "#/components/schemas/PaymentStatus"
+        latitude:
+          type: number
+        longitude:
+          type: number
+        landmarkAddress:
+          type: string
+        courierNotes:
+          type: string
+          nullable: true
+        riskLevel:
+          $ref: "#/components/schemas/RiskLevel"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RiskAssessment:
+      type: object
+      properties:
+        riskLevel:
+          $ref: "#/components/schemas/RiskLevel"
+        reason:
+          type: string
+          enum: [TRUSTED_CUSTOMER, FIRST_ORDER_HIGH_VALUE, REPEAT_CANCELLATIONS, LOW_VALUE_ORDER]
+        action:
+          type: string
+          enum: [NONE, OTP_REQUIRED, VERBAL_CONFIRMATION_REQUIRED, COD_BLOCKED]

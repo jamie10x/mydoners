@@ -1,0 +1,19 @@
+{
+  "name": "mydoners",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "backend",
+    "mini-app",
+    "courier-bot",
+    "packages/*"
+  ],
+  "scripts": {
+    "infra:up": "docker-compose up -d",
+    "infra:down": "docker-compose down",
+    "backend:dev": "bun --cwd backend run dev",
+    "backend:migrate": "bun --cwd backend run migrate",
+    "mini-app:dev": "bun --cwd mini-app run dev",
+    "courier-bot:dev": "bun --cwd courier-bot run dev"
+  }
+}

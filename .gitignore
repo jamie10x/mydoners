@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Bun
+bun.lockb
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Android
+android-kds/.gradle/
+android-kds/build/
+android-kds/*/build/
+android-kds/local.properties
+android-kds/.idea/
+android-kds/*.iml
+android-kds/captures/
+android-kds/.cxx/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes (bind-mounted data, if any)
+.docker-data/
