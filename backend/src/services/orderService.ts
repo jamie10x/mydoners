@@ -8,6 +8,7 @@ import { realtime } from "../ws/socket";
 import type { CreateOrderInput } from "../dto/order.dto";
 import type { orders } from "../db/schema";
 import { scoreOrderRisk } from "./riskService";
+import { paymentService } from "./paymentService";
 import type { RiskAssessment } from "@mydoners/shared-contracts";
 
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -142,6 +143,14 @@ export const orderService = {
       riskLevel,
       items: resolvedItems,
     });
+
+    if (input.paymentType === "CLICK" || input.paymentType === "PAYME") {
+      // Stub provider — see paymentService.ts. Simulates instant success so
+      // the rest of the flow (paymentStatus=PAID, courier's amountToCollect)
+      // works end-to-end pending real Click/Payme merchant credentials.
+      await paymentService.initiatePayment(orderId, input.paymentType, totalAmount);
+      await orderRepository.markPaid(orderId);
+    }
 
     const created = await orderRepository.findById(orderId);
     if (!created) throw new Error("Order vanished immediately after creation");

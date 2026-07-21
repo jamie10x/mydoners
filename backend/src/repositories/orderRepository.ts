@@ -127,6 +127,10 @@ export const orderRepository = {
     }));
   },
 
+  async markPaid(id: number) {
+    await db.update(orders).set({ paymentStatus: "PAID" }).where(eq(orders.id, id));
+  },
+
   async setCashConfirmationCode(id: number, code: string) {
     await db.update(orders).set({ cashConfirmationCode: code }).where(eq(orders.id, id));
   },
