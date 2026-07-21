@@ -3,6 +3,8 @@ import type { Order, PaymentType } from "@mydoners/shared-contracts";
 import { api, ApiError } from "../api/client";
 import { useCartStore } from "../store/cartStore";
 import { useUiStore } from "../store/uiStore";
+import { useAuthStore } from "../store/authStore";
+import { usePhoneVerification } from "../hooks/usePhoneVerification";
 import { formatSom } from "../lib/format";
 
 type Coords = { latitude: number; longitude: number } | null;
@@ -26,10 +28,10 @@ function useGeolocation() {
   return { coords, status, request };
 }
 
-const PAYMENT_OPTIONS: Array<{ value: PaymentType; label: string; available: boolean }> = [
-  { value: "CASH", label: "Cash on Delivery", available: true },
-  { value: "CLICK", label: "Click", available: false },
-  { value: "PAYME", label: "Payme", available: false },
+const PAYMENT_OPTIONS: Array<{ value: PaymentType; label: string }> = [
+  { value: "CASH", label: "Cash on Delivery" },
+  { value: "CLICK", label: "Click" },
+  { value: "PAYME", label: "Payme" },
 ];
 
 export function CheckoutPage() {
@@ -46,6 +48,10 @@ export function CheckoutPage() {
   const [paymentType, setPaymentType] = useState<PaymentType>("CASH");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [codBlocked, setCodBlocked] = useState(false);
+
+  const user = useAuthStore((s) => s.user);
+  const phoneVerification = usePhoneVerification();
 
   const canSubmit = coords !== null && landmarkAddress.trim().length > 0 && !submitting;
 
@@ -53,6 +59,7 @@ export function CheckoutPage() {
     if (!coords) return;
     setSubmitting(true);
     setError(null);
+    setCodBlocked(false);
     try {
       const order = await api.post<Order>("/orders", {
         items: lines.map((line) => ({
@@ -69,7 +76,15 @@ export function CheckoutPage() {
       clearCart();
       setActiveOrder(order.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.envelope.message : "Failed to place order. Please try again.");
+      if (err instanceof ApiError) {
+        setError(err.envelope.message);
+        if (err.envelope.code === "COD_BLOCKED") {
+          setCodBlocked(true);
+          setPaymentType("CLICK");
+        }
+      } else {
+        setError("Failed to place order. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -127,21 +142,40 @@ export function CheckoutPage() {
 
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase text-black/50">Payment</h2>
+          {codBlocked && (
+            <p className="mb-2 text-sm text-red-600">
+              Cash on Delivery isn't available for this order — pick Click or Payme instead.
+            </p>
+          )}
           <div className="flex flex-col gap-2">
             {PAYMENT_OPTIONS.map((option) => (
               <button
                 key={option.value}
-                disabled={!option.available}
                 onClick={() => setPaymentType(option.value)}
                 className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium ${
                   paymentType === option.value ? "border-brand bg-brand/5" : "border-black/10"
-                } ${!option.available ? "opacity-40" : ""}`}
+                } ${codBlocked && option.value === "CASH" ? "opacity-40" : ""}`}
               >
                 {option.label}
-                {!option.available && <span className="text-xs">Coming soon</span>}
               </button>
             ))}
           </div>
+
+          {paymentType === "CASH" && !user?.isPhoneVerified && (
+            <div className="mt-3 rounded-xl bg-black/5 p-3">
+              <p className="mb-2 text-sm text-black/70">
+                Share your Telegram contact to speed up Cash on Delivery verification.
+              </p>
+              <button
+                onClick={phoneVerification.verify}
+                disabled={phoneVerification.status === "requesting"}
+                className="w-full rounded-lg bg-brand/10 px-3 py-2 text-sm font-semibold text-brand"
+              >
+                {phoneVerification.status === "requesting" ? "Waiting for Telegram…" : "📱 Share phone number"}
+              </button>
+              {phoneVerification.error && <p className="mt-1 text-sm text-red-600">{phoneVerification.error}</p>}
+            </div>
+          )}
         </section>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Order, OrderStatus } from "@mydoners/shared-contracts";
-import { api } from "../api/client";
+import { api, ApiError } from "../api/client";
 import { useUiStore } from "../store/uiStore";
 import { useRealtimeOrder } from "../hooks/useRealtimeOrder";
 import { formatSom } from "../lib/format";
@@ -14,6 +14,76 @@ const STAGES: Array<{ label: string; statuses: OrderStatus[] }> = [
 
 function stageIndexFor(status: OrderStatus): number {
   return STAGES.findIndex((stage) => stage.statuses.includes(status));
+}
+
+/** Optional self-service verification for MEDIUM-risk orders — doesn't gate cooking, see backend/src/services/orderService.ts. */
+function OtpVerification({ orderId }: { orderId: number }) {
+  const [step, setStep] = useState<"prompt" | "requested" | "verified">("prompt");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function requestCode() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/orders/${orderId}/otp/request`);
+      setStep("requested");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.envelope.message : "Couldn't send the code — try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verifyCode() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/orders/${orderId}/otp/verify`, { code });
+      setStep("verified");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.envelope.message : "Invalid or expired code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (step === "verified") {
+    return <p className="rounded-xl bg-green-50 p-3 text-sm text-green-700">✅ Order verified via SMS.</p>;
+  }
+
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+      <p className="mb-2 text-sm font-medium text-amber-800">Verify this order via SMS (optional)</p>
+      {step === "prompt" ? (
+        <button
+          onClick={requestCode}
+          disabled={busy}
+          className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white"
+        >
+          {busy ? "Sending…" : "Send code"}
+        </button>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="6-digit code"
+            className="min-w-0 flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm"
+          />
+          <button
+            onClick={verifyCode}
+            disabled={busy || code.length < 4}
+            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            Verify
+          </button>
+        </div>
+      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
+  );
 }
 
 export function OrderTrackingPage() {
@@ -68,6 +138,15 @@ export function OrderTrackingPage() {
           );
         })}
       </div>
+
+      {order.riskLevel === "MEDIUM" && <OtpVerification orderId={activeOrderId} />}
+
+      {order.cashConfirmationCode && (liveStatus === "READY_FOR_DELIVERY" || liveStatus === "ON_THE_WAY") && (
+        <div className="rounded-xl bg-black/5 p-3 text-center">
+          <p className="text-sm text-black/60">Give this code to your courier to confirm cash payment</p>
+          <p className="mt-1 text-3xl font-bold tracking-widest">{order.cashConfirmationCode}</p>
+        </div>
+      )}
 
       <div className="rounded-xl border border-black/5 bg-white p-3">
         <h2 className="mb-2 text-sm font-semibold text-black/50">Items</h2>

@@ -1,8 +1,16 @@
 import { randomBytes } from "node:crypto";
+import { sql } from "drizzle-orm";
 import { db } from "./index";
-import { categories, deviceKeys, products } from "./schema";
+import { categories, deviceKeys, orderItems, orderLogs, orders, products } from "./schema";
 
 async function seed() {
+  // Idempotent — re-running this repeatedly during local dev shouldn't pile
+  // up duplicate categories/products. Order tables cascade from products, so
+  // truncate those too rather than leaving orphaned test orders around.
+  await db.execute(
+    sql`TRUNCATE TABLE ${orderLogs}, ${orderItems}, ${orders}, ${products}, ${categories}, ${deviceKeys} RESTART IDENTITY CASCADE`,
+  );
+
   const [lavashCategory] = await db
     .insert(categories)
     .values({ name: "Lavash", displayOrder: 1 })
