@@ -10,7 +10,9 @@ bun.lockb
 .env
 .env.local
 .env.*.local
+.env.prod
 !.env.example
+!.env.prod.example
 
 # Build output
 dist/

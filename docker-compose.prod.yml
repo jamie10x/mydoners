@@ -1,0 +1,77 @@
+networks:
+  mydoners_net:
+    name: mydoners_net
+
+volumes:
+  mydoners_prod_postgres_data:
+  mydoners_prod_redis_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mydoners_prod_postgres
+    restart: unless-stopped
+    networks: [mydoners_net]
+    env_file: [.env.prod]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mydoners
+    volumes:
+      - mydoners_prod_postgres_data:/var/lib/postgresql/data
+    # Deliberately no "ports:" mapping — only reachable from other containers
+    # on mydoners_net, never from the host or internet. This server already
+    # runs Postgres natively on 5432 and another container on 5432 too, so
+    # staying off the host network entirely also sidesteps that collision.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d mydoners"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mydoners_prod_redis
+    restart: unless-stopped
+    networks: [mydoners_net]
+    volumes:
+      - mydoners_prod_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: mydoners_prod_backend
+    restart: unless-stopped
+    networks: [mydoners_net]
+    env_file: [backend/.env.prod]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    # Bound to localhost only — nginx (already running natively on this host)
+    # reverse-proxies api.mydoners.uz here. Port 4210 chosen to avoid every
+    # port already in use on this shared server (see docs/deployment.md).
+    ports:
+      - "127.0.0.1:4210:3000"
+    volumes:
+      - ./backend/uploads:/app/backend/uploads
+
+  courier-bot:
+    build:
+      context: .
+      dockerfile: courier-bot/Dockerfile
+    container_name: mydoners_prod_courier_bot
+    restart: unless-stopped
+    networks: [mydoners_net]
+    env_file: [courier-bot/.env.prod]
+    depends_on:
+      - backend
+    # Only needed in webhook mode (BOT_MODE=webhook in courier-bot/.env.prod) —
+    # harmless to publish even in polling mode since nothing listens then.
+    ports:
+      - "127.0.0.1:4211:3001"

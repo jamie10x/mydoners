@@ -1,4 +1,4 @@
-import { Bot } from "grammy";
+import { Bot, webhookCallback } from "grammy";
 import { env } from "./config/env";
 import { registerCallbackHandlers } from "./handlers/callbacks";
 import { connectToBackend } from "./ws/socketClient";
@@ -22,7 +22,27 @@ connectToBackend((payload) => {
 
 bot.catch((err) => console.error("Bot error:", err));
 
-// Long polling for local dev, per docs/decisions.md — switch to webhook mode
-// for production if request latency to Telegram's servers matters.
-bot.start();
-console.log("Courier bot started (long polling)");
+// Long polling for local dev (default), webhook mode for production — see
+// docs/decisions.md #5 and BOT_MODE in config/env.ts.
+if (env.botMode === "webhook") {
+  if (!env.publicWebhookUrl) throw new Error("PUBLIC_WEBHOOK_URL is required when BOT_MODE=webhook");
+
+  const handleUpdate = webhookCallback(bot, "std/http");
+  Bun.serve({
+    port: env.webhookPort,
+    async fetch(req) {
+      const url = new URL(req.url);
+      if (url.pathname === env.webhookPath && req.method === "POST") {
+        return handleUpdate(req);
+      }
+      return new Response("Not found", { status: 404 });
+    },
+  });
+
+  await bot.api.setWebhook(env.publicWebhookUrl);
+  console.log(`Courier bot webhook listening on :${env.webhookPort}${env.webhookPath}`);
+} else {
+  await bot.api.deleteWebhook().catch(() => {}); // in case it was previously in webhook mode
+  bot.start();
+  console.log("Courier bot started (long polling)");
+}
