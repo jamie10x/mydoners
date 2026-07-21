@@ -39,4 +39,11 @@ Each subproject has its own `.env.example` — copy to `.env` and fill in secret
 
 ## Status
 
-Phase 0 (contracts & foundations) is in progress. See the execution roadmap in `docs/` (or the plan file this repo was scaffolded from) for the full phased build sequence: Phase 0 (contracts) → Phase 1 (parallel happy-path buildout across all four tracks) → Phase 2 (anti-fraud/CoD risk engine + Click/Payme) → Phase 3 (deployment).
+Phase 0 (contracts & foundations) and Phase 1 (happy-path buildout across all four tracks) are done — every track has been run and verified against the real backend, not just compiled:
+
+- **Backend**: auth, catalog, order creation/pricing/modifier validation, the full order status state machine, and Socket.io event emission — exercised end-to-end with real HTTP/WS calls.
+- **Mini App**: menu → forced modifier choice → cart → checkout (GPS + landmark) → order creation → live status tracker, verified in a browser against the real backend.
+- **Android KDS**: built and run on an emulator against the live backend — device-key auth, work-queue recovery on launch, live WebSocket order updates, the continuous alarm starting/stopping correctly, and Accept/Ready actions moving real orders through the backend.
+- **Courier Bot**: the WebSocket dispatch trigger (`courier.assigned`) and bot-authenticated status updates verified live against the backend. Telegram send/receive itself is untested — it needs a real `COURIER_BOT_TOKEN` and courier chat id, which are user-supplied secrets.
+
+See `docs/decisions.md` for defaults chosen along the way and `docs/` generally for the contracts. Next up is Phase 2 (anti-fraud/CoD risk engine + Click/Payme integration), then Phase 3 (deployment) — see the execution roadmap (the plan file this repo was scaffolded from) for the full phased sequence.
