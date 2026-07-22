@@ -41,6 +41,13 @@ export const users = pgTable("users", {
   cancelledOrdersCount: integer("cancelled_orders_count").default(0),
   isBlacklisted: boolean("is_blacklisted").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+
+  // Saved "Home" delivery shortcut — most orders happen from home, so this
+  // skips re-sharing location every checkout. Single slot by design (not a
+  // full saved-addresses table) — see docs/decisions.md if that changes.
+  homeLatitude: doublePrecision("home_latitude"),
+  homeLongitude: doublePrecision("home_longitude"),
+  homeLandmarkAddress: text("home_landmark_address"),
 });
 
 // order_status, payment_type, payment_status are enforced at the app layer via
@@ -59,6 +66,12 @@ export const orders = pgTable("orders", {
   longitude: doublePrecision("longitude").notNull(),
   landmarkAddress: text("landmark_address").notNull(),
   courierNotes: text("courier_notes"),
+  // Snapshotted at checkout, not just read live off the user profile — the
+  // person receiving a delivery isn't always the account holder, and a
+  // later profile edit shouldn't rewrite what a past order actually said.
+  // Nullable only because orders placed before this field existed have none.
+  customerName: varchar("customer_name", { length: 200 }),
+  customerPhone: varchar("customer_phone", { length: 20 }),
   riskLevel: varchar("risk_level", { length: 10 }), // LOW | MEDIUM | HIGH | null — Phase 2
   // Phase 2 — courier delivery-proof flow. Code is generated when an order
   // becomes READY_FOR_DELIVERY for CASH orders; courier must have the

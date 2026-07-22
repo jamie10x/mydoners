@@ -63,6 +63,17 @@
         "typescript": "^5.7.2",
       },
     },
+    "customer-bot": {
+      "name": "@mydoners/customer-bot",
+      "version": "0.1.0",
+      "dependencies": {
+        "grammy": "^1.31.0",
+      },
+      "devDependencies": {
+        "bun-types": "^1.1.38",
+        "typescript": "^5.7.2",
+      },
+    },
     "mini-app": {
       "name": "@mydoners/mini-app",
       "version": "0.1.0",
@@ -200,6 +211,8 @@
     "@mydoners/backend": ["@mydoners/backend@workspace:backend"],
 
     "@mydoners/courier-bot": ["@mydoners/courier-bot@workspace:courier-bot"],
+
+    "@mydoners/customer-bot": ["@mydoners/customer-bot@workspace:customer-bot"],
 
     "@mydoners/mini-app": ["@mydoners/mini-app@workspace:mini-app"],
 

@@ -9,6 +9,7 @@ import type { CreateOrderInput } from "../dto/order.dto";
 import type { orders } from "../db/schema";
 import { scoreOrderRisk } from "./riskService";
 import { paymentService } from "./paymentService";
+import { orderNotificationService } from "./orderNotificationService";
 import type { RiskAssessment } from "@mydoners/shared-contracts";
 
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -52,6 +53,8 @@ function toApiOrder(order: OrderRow, items: OrderItemRow[]): Order {
     longitude: order.longitude,
     landmarkAddress: order.landmarkAddress,
     courierNotes: order.courierNotes,
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
     riskLevel: order.riskLevel as Order["riskLevel"],
     cashConfirmationCode: order.cashConfirmationCode,
     deliveryProofPhotoUrl: order.deliveryProofPhotoUrl,
@@ -141,6 +144,8 @@ export const orderService = {
       landmarkAddress: input.landmarkAddress,
       courierNotes: input.courierNotes ?? null,
       riskLevel,
+      customerName: input.customerName,
+      customerPhone: input.customerPhone,
       items: resolvedItems,
     });
 
@@ -157,7 +162,7 @@ export const orderService = {
 
     realtime.orderCreated(orderId, {
       status: created.order.status,
-      customerName: [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unknown",
+      customerName: created.order.customerName ?? ([user.firstName, user.lastName].filter(Boolean).join(" ") || "Unknown"),
       items: created.items.map((item) => ({
         productName: item.productName,
         selectedVariant: item.selectedVariant,
@@ -188,7 +193,12 @@ export const orderService = {
       });
     }
 
-    return toApiOrder(created.order, created.items);
+    const apiOrder = toApiOrder(created.order, created.items);
+    orderNotificationService.notifyOrderReceived(telegramId, apiOrder).catch((err) => {
+      console.error(`Failed to send order-received notification for order ${orderId}:`, err);
+    });
+
+    return apiOrder;
   },
 
   async getOrder(orderId: number): Promise<Order> {
@@ -259,11 +269,16 @@ export const orderService = {
       changedBy,
     });
 
+    orderNotificationService
+      .notifyStatusChange(userId, toApiOrder(existing.order, existing.items), newStatus)
+      .catch((err) => console.error(`Failed to send status-change notification for order ${orderId}:`, err));
+
     if (newStatus === "READY_FOR_DELIVERY") {
       const user = await userRepository.findByTelegramId(userId);
       realtime.courierAssigned(orderId, {
-        customerName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Unknown",
-        customerPhone: user?.isPhoneVerified ? user.phoneNumber : null,
+        customerName:
+          existing.order.customerName ?? ([user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Unknown"),
+        customerPhone: existing.order.customerPhone ?? (user?.isPhoneVerified ? user.phoneNumber : null),
         latitude: existing.order.latitude,
         longitude: existing.order.longitude,
         landmarkAddress: existing.order.landmarkAddress,

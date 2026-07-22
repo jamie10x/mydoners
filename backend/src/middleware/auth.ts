@@ -19,12 +19,13 @@ export interface TelegramInitDataUser {
 export function verifyTelegramInitData(initData: string, botToken: string): TelegramInitDataUser {
   const params = new URLSearchParams(initData);
   const hash = params.get("hash");
+  // Only "hash" is excluded from the data-check-string. The "signature"
+  // field (Ed25519, used by the separate third-party-validation scheme) is
+  // part of what Telegram signs into "hash" and must stay in — confirmed
+  // against @telegram-apps/init-data-node's reference implementation after
+  // this being backwards caused every real Telegram client to fail
+  // verification while synthetic self-signed test data kept passing.
   params.delete("hash");
-  // Telegram clients also send a "signature" field (Ed25519, for a separate
-  // third-party validation path) — it must be excluded from the HMAC
-  // data-check-string just like "hash", or verification fails for every
-  // real Telegram client. See docs/auth-contract.md #1.
-  params.delete("signature");
 
   const dataCheckString = [...params.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -90,7 +91,10 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   }
   const token = header.slice("Bearer ".length);
 
-  if (env.courierBotApiKey && token === env.courierBotApiKey) {
+  if (
+    (env.courierBotApiKey && token === env.courierBotApiKey) ||
+    (env.customerBotApiKey && token === env.customerBotApiKey)
+  ) {
     req.actor = { type: "bot" };
     next();
     return;

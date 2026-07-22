@@ -7,6 +7,7 @@
     "mini-app",
     "admin-app",
     "courier-bot",
+    "customer-bot",
     "packages/*"
   ],
   "scripts": {
@@ -16,6 +17,7 @@
     "backend:migrate": "bun --cwd backend run migrate",
     "mini-app:dev": "bun --cwd mini-app run dev",
     "admin-app:dev": "bun --cwd admin-app run dev",
-    "courier-bot:dev": "bun --cwd courier-bot run dev"
+    "courier-bot:dev": "bun --cwd courier-bot run dev",
+    "customer-bot:dev": "bun --cwd customer-bot run dev"
   }
 }

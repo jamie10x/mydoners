@@ -7,7 +7,7 @@ Telegram signs every Mini App launch with an `initData` query string. The Mini A
 ### Verification algorithm (Telegram's documented method)
 
 1. Parse `initData` as a URL query string into key/value pairs.
-2. Extract and remove the `hash` field — this is the signature to verify against. Also remove `signature` if present (modern Telegram clients include a separate Ed25519 `signature` field for a different, third-party validation path — it must **not** be part of the HMAC data-check-string, or every real Telegram client fails verification).
+2. Extract and remove only the `hash` field — this is the signature to verify against. Modern Telegram clients also include a separate Ed25519 `signature` field (used by a different, third-party validation path that doesn't need the bot token) — but that field **stays in** the HMAC data-check-string; it's part of what Telegram signs into `hash`. (Confirmed against `@telegram-apps/init-data-node`'s reference implementation after excluding it here caused every real Telegram client to fail verification while synthetic self-signed test `initData` kept passing — the two didn't diverge until a `signature` field was present, which self-signed test fixtures didn't produce.)
 3. Build the `data-check-string`: sort all remaining key/value pairs alphabetically by key, join as `key=value` lines with `\n`.
 4. Compute `secret_key = HMAC_SHA256(bot_token, "WebAppData")` — i.e. HMAC-SHA256 with key `"WebAppData"` and message `bot_token`.
 5. Compute `computed_hash = HMAC_SHA256(data-check-string, secret_key)` (hex-encoded).
@@ -24,7 +24,6 @@ export function verifyTelegramInitData(initData: string, botToken: string): Tele
   const params = new URLSearchParams(initData);
   const hash = params.get("hash");
   params.delete("hash");
-  params.delete("signature");
 
   const dataCheckString = [...params.entries()]
     .sort(([a], [b]) => a.localeCompare(b))

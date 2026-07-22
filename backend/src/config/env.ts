@@ -11,6 +11,9 @@ export const env = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   jwtSecret: process.env.JWT_SECRET || "dev-secret-change-me",
   courierBotApiKey: process.env.COURIER_BOT_API_KEY ?? "",
+  customerBotApiKey: process.env.CUSTOMER_BOT_API_KEY ?? "",
+  // Used in the "Track order" button on order-notification messages.
+  miniAppUrl: process.env.MINI_APP_URL ?? "https://mydoners.uz",
 
   // Admin panel — single-editor scope (see docs/decisions.md), so a shared
   // password rather than a full user/role system is proportionate.

@@ -18,6 +18,13 @@ connectToBackend((payload) => {
       reply_markup: orderKeyboard(orderId, data.latitude, data.longitude),
     })
     .catch((err) => console.error(`Failed to send dispatch message for order ${orderId}:`, err));
+
+  // Native Telegram location bubble alongside the text card — tapping it
+  // opens the courier's own default maps app directly, on top of the
+  // explicit Yandex/Google Maps buttons already in orderKeyboard().
+  bot.api
+    .sendLocation(env.courierChatId, data.latitude, data.longitude)
+    .catch((err) => console.error(`Failed to send location pin for order ${orderId}:`, err));
 });
 
 bot.catch((err) => console.error("Bot error:", err));

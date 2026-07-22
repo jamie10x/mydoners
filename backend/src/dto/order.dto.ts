@@ -16,6 +16,8 @@ export const createOrderSchema = z.object({
   longitude: z.number(),
   landmarkAddress: z.string().min(1),
   courierNotes: z.string().nullable().optional(),
+  customerName: z.string().min(1),
+  customerPhone: z.string().min(5),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

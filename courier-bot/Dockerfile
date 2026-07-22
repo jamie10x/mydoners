@@ -8,6 +8,7 @@ COPY packages/shared-contracts/package.json packages/shared-contracts/package.js
 COPY mini-app/package.json mini-app/package.json
 COPY admin-app/package.json admin-app/package.json
 COPY courier-bot/package.json courier-bot/package.json
+COPY customer-bot/package.json customer-bot/package.json
 RUN bun install --frozen-lockfile
 
 FROM base AS runner

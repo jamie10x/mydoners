@@ -49,6 +49,8 @@ export interface Order {
   longitude: number;
   landmarkAddress: string;
   courierNotes: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
   riskLevel: RiskLevel;
   cashConfirmationCode: string | null;
   deliveryProofPhotoUrl: string | null;
@@ -125,14 +127,22 @@ export interface DeliveryConfirmedData {
   proofPhotoUrl: string | null;
 }
 
+export interface HomeAddress {
+  latitude: number;
+  longitude: number;
+  landmarkAddress: string;
+}
+
 export interface PublicUser {
   telegramId: number;
   firstName: string;
   lastName: string | null;
   username: string | null;
+  phoneNumber: string | null;
   isPhoneVerified: boolean;
   completedOrdersCount: number;
   isBlacklisted: boolean;
+  homeAddress: HomeAddress | null;
 }
 
 export interface Category {

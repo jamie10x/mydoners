@@ -26,6 +26,8 @@ export interface NewOrderInput {
   landmarkAddress: string;
   courierNotes: string | null;
   riskLevel: RiskLevel;
+  customerName: string;
+  customerPhone: string;
   items: NewOrderItemInput[];
 }
 
@@ -45,6 +47,8 @@ export const orderRepository = {
           landmarkAddress: input.landmarkAddress,
           courierNotes: input.courierNotes,
           riskLevel: input.riskLevel,
+          customerName: input.customerName,
+          customerPhone: input.customerPhone,
         })
         .returning();
 

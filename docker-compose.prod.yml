@@ -75,3 +75,15 @@ services:
     # harmless to publish even in polling mode since nothing listens then.
     ports:
       - "127.0.0.1:4211:3001"
+
+  customer-bot:
+    build:
+      context: .
+      dockerfile: customer-bot/Dockerfile
+    container_name: mydoners_prod_customer_bot
+    restart: unless-stopped
+    networks: [mydoners_net]
+    env_file: [customer-bot/.env.prod]
+    # Only needed in webhook mode (BOT_MODE=webhook in customer-bot/.env.prod).
+    ports:
+      - "127.0.0.1:4212:3002"

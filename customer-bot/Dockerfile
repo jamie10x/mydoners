@@ -1,8 +1,6 @@
 FROM oven/bun:1.3-slim AS base
 WORKDIR /app
 
-# Install workspace deps at the monorepo root so the workspace: protocol
-# resolves packages/shared-contracts correctly.
 FROM base AS deps
 COPY package.json bun.lock ./
 COPY backend/package.json backend/package.json
@@ -16,10 +14,9 @@ RUN bun install --frozen-lockfile
 FROM base AS runner
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/backend/node_modules ./backend/node_modules
-COPY packages/shared-contracts packages/shared-contracts
-COPY backend backend
+COPY --from=deps /app/customer-bot/node_modules ./customer-bot/node_modules
+COPY customer-bot customer-bot
 
-WORKDIR /app/backend
-EXPOSE 3000
+WORKDIR /app/customer-bot
+EXPOSE 3002
 CMD ["bun", "run", "src/index.ts"]

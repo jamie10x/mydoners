@@ -1,5 +1,6 @@
 import { signSessionToken, verifyTelegramInitData } from "../middleware/auth";
 import { userRepository } from "../repositories/userRepository";
+import { mapPublicUser } from "./userService";
 import { env } from "../config/env";
 
 export const authService = {
@@ -8,17 +9,6 @@ export const authService = {
     const user = await userRepository.upsertFromTelegram(profile);
     const token = signSessionToken(user.telegramId);
 
-    return {
-      token,
-      user: {
-        telegramId: user.telegramId,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        username: user.username,
-        isPhoneVerified: user.isPhoneVerified,
-        completedOrdersCount: user.completedOrdersCount,
-        isBlacklisted: user.isBlacklisted,
-      },
-    };
+    return { token, user: mapPublicUser(user) };
   },
 };

@@ -51,4 +51,11 @@ export const userRepository = {
       .set({ phoneNumber, isPhoneVerified: true })
       .where(eq(users.telegramId, telegramId));
   },
+
+  async setHomeAddress(telegramId: number, latitude: number, longitude: number, landmarkAddress: string) {
+    await db
+      .update(users)
+      .set({ homeLatitude: latitude, homeLongitude: longitude, homeLandmarkAddress: landmarkAddress })
+      .where(eq(users.telegramId, telegramId));
+  },
 };
