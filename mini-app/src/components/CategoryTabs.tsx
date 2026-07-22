@@ -8,11 +8,11 @@ interface CategoryTabsProps {
 
 export function CategoryTabs({ categories, activeCategoryId, onSelect }: CategoryTabsProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 pb-2">
+    <div className="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <button
         onClick={() => onSelect(null)}
-        className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium ${
-          activeCategoryId === null ? "bg-brand text-white" : "bg-black/5 text-black/70"
+        className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+          activeCategoryId === null ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
         }`}
       >
         All
@@ -21,8 +21,8 @@ export function CategoryTabs({ categories, activeCategoryId, onSelect }: Categor
         <button
           key={category.id}
           onClick={() => onSelect(category.id)}
-          className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium ${
-            activeCategoryId === category.id ? "bg-brand text-white" : "bg-black/5 text-black/70"
+          className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+            activeCategoryId === category.id ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
           }`}
         >
           {category.name}

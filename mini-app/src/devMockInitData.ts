@@ -24,6 +24,11 @@ async function buildSignedInitData(botToken: string): Promise<string> {
   params.set("query_id", "AADevMock");
   params.set("user", user);
   params.set("auth_date", authDate);
+  // Real Telegram initData also carries an Ed25519 "signature" field
+  // (used by a separate third-party-validation scheme). It's still part of
+  // what gets HMAC-signed into "hash" though, so it must be set before the
+  // data-check-string is built below — see backend/src/middleware/auth.ts.
+  params.set("signature", "dev-mock-signature");
 
   const dataCheckString = [...params.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -34,12 +39,6 @@ async function buildSignedInitData(botToken: string): Promise<string> {
   const hash = toHex(await hmacSha256(secretKey, dataCheckString));
 
   params.set("hash", hash);
-  // Real Telegram initData also carries an Ed25519 "signature" field
-  // (separate from "hash", excluded from the HMAC data-check-string, and not
-  // checked by our backend's verifyTelegramInitData) — the SDK's client-side
-  // InitData parser requires the field to be present, so the mock needs a
-  // placeholder value even though nothing validates its contents here.
-  params.set("signature", "dev-mock-signature");
   return params.toString();
 }
 

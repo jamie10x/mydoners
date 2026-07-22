@@ -21,7 +21,17 @@ export function useTelegramAuth(): { status: AuthStatus; error: string | null } 
 
     async function login() {
       try {
-        const { initDataRaw } = retrieveLaunchParams();
+        // Prefer the string telegram-web-app.js injects directly — it's
+        // Telegram's own untouched value, guaranteed byte-identical to what
+        // their servers signed. @telegram-apps/sdk's retrieveLaunchParams()
+        // re-parses and reconstructs the query string, which has been
+        // observed to alter the "user" field's byte content (e.g. via a
+        // decode/re-encode round trip) and break HMAC signature validation
+        // on real Telegram Desktop clients even though the same code path
+        // works for locally-mocked dev data. Fall back to the SDK for local
+        // dev, where mockTelegramEnv patches the SDK but not window.Telegram.
+        const nativeInitData = window.Telegram?.WebApp?.initData;
+        const initDataRaw = nativeInitData || retrieveLaunchParams().initDataRaw;
         if (!initDataRaw) {
           throw new Error("No Telegram launch data — open this app from inside Telegram.");
         }

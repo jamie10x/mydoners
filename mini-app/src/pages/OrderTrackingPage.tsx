@@ -50,12 +50,12 @@ function OtpVerification({ orderId }: { orderId: number }) {
   }
 
   if (step === "verified") {
-    return <p className="rounded-xl bg-green-50 p-3 text-sm text-green-700">✅ Order verified via SMS.</p>;
+    return <p className="rounded-xl bg-green-50 p-3 text-sm font-medium text-green-700">✅ Order verified via SMS.</p>;
   }
 
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-      <p className="mb-2 text-sm font-medium text-amber-800">Verify this order via SMS (optional)</p>
+      <p className="mb-2 text-sm font-semibold text-amber-800">Verify this order via SMS (optional)</p>
       {step === "prompt" ? (
         <button
           onClick={requestCode}
@@ -70,7 +70,7 @@ function OtpVerification({ orderId }: { orderId: number }) {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="6-digit code"
-            className="min-w-0 flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm outline-none"
           />
           <button
             onClick={verifyCode}
@@ -81,7 +81,7 @@ function OtpVerification({ orderId }: { orderId: number }) {
           </button>
         </div>
       )}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm font-medium text-red-600">{error}</p>}
     </div>
   );
 }
@@ -99,14 +99,22 @@ export function OrderTrackingPage() {
   const liveStatus = useRealtimeOrder(activeOrderId, order?.status ?? "PENDING");
 
   if (!activeOrderId || !order) {
-    return <p className="py-16 text-center text-black/40">No active order.</p>;
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <p className="py-16 text-center text-sm font-medium text-stone-400">No active order.</p>
+      </div>
+    );
   }
 
   if (liveStatus === "CANCELLED") {
     return (
-      <div className="flex flex-col items-center gap-4 px-4 pt-16 text-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto px-4 text-center">
+        <p className="text-3xl">😔</p>
         <p className="text-lg font-bold text-red-600">Order #{activeOrderId} was cancelled</p>
-        <button onClick={() => goTo("menu")} className="rounded-xl bg-brand px-5 py-2.5 font-semibold text-white">
+        <button
+          onClick={() => goTo("menu")}
+          className="rounded-xl bg-brand px-5 py-2.5 font-semibold text-white shadow-lg shadow-brand/30"
+        >
           Back to menu
         </button>
       </div>
@@ -116,24 +124,29 @@ export function OrderTrackingPage() {
   const currentStageIndex = stageIndexFor(liveStatus);
 
   return (
-    <div className="flex flex-col gap-6 px-4 pt-6 pb-10">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pt-6 pb-10">
       <header>
-        <h1 className="text-lg font-bold">Order #{activeOrderId}</h1>
-        <p className="text-sm text-black/50">{formatSom(order.totalAmount)}</p>
+        <h1 className="text-lg font-extrabold text-stone-900">Order #{activeOrderId}</h1>
+        <p className="text-sm font-medium text-stone-400">{formatSom(order.totalAmount)}</p>
       </header>
 
-      <div className="flex flex-col gap-0">
+      <div className="flex flex-col gap-0 rounded-2xl border border-stone-100 bg-white p-4 shadow-sm">
         {STAGES.map((stage, index) => {
           const reached = index <= currentStageIndex;
           return (
             <div key={stage.label} className="flex gap-3">
               <div className="flex flex-col items-center">
-                <div className={`h-3 w-3 rounded-full ${reached ? "bg-brand" : "bg-black/15"}`} />
+                <div className={`h-3 w-3 rounded-full ${reached ? "bg-brand" : "bg-stone-200"}`} />
                 {index < STAGES.length - 1 && (
-                  <div className={`w-0.5 flex-1 ${index < currentStageIndex ? "bg-brand" : "bg-black/15"}`} style={{ minHeight: 32 }} />
+                  <div
+                    className={`w-0.5 flex-1 ${index < currentStageIndex ? "bg-brand" : "bg-stone-200"}`}
+                    style={{ minHeight: 32 }}
+                  />
                 )}
               </div>
-              <p className={`pb-6 text-sm font-medium ${reached ? "text-black" : "text-black/40"}`}>{stage.label}</p>
+              <p className={`pb-6 text-sm font-semibold ${reached ? "text-stone-900" : "text-stone-400"}`}>
+                {stage.label}
+              </p>
             </div>
           );
         })}
@@ -142,26 +155,26 @@ export function OrderTrackingPage() {
       {order.riskLevel === "MEDIUM" && <OtpVerification orderId={activeOrderId} />}
 
       {order.cashConfirmationCode && (liveStatus === "READY_FOR_DELIVERY" || liveStatus === "ON_THE_WAY") && (
-        <div className="rounded-xl bg-black/5 p-3 text-center">
-          <p className="text-sm text-black/60">Give this code to your courier to confirm cash payment</p>
-          <p className="mt-1 text-3xl font-bold tracking-widest">{order.cashConfirmationCode}</p>
+        <div className="rounded-xl bg-stone-100 p-3 text-center">
+          <p className="text-sm font-medium text-stone-500">Give this code to your courier to confirm cash payment</p>
+          <p className="mt-1 text-3xl font-bold tracking-widest text-stone-900">{order.cashConfirmationCode}</p>
         </div>
       )}
 
-      <div className="rounded-xl border border-black/5 bg-white p-3">
-        <h2 className="mb-2 text-sm font-semibold text-black/50">Items</h2>
+      <div className="rounded-2xl border border-stone-100 bg-white p-3 shadow-sm">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Items</h2>
         {order.items.map((item) => (
-          <div key={item.id} className="flex justify-between text-sm">
-            <span>
+          <div key={item.id} className="flex justify-between py-1 text-sm">
+            <span className="text-stone-700">
               {item.quantity}× {item.productName}
               {item.selectedVariant ? ` (${item.selectedVariant})` : ""}
             </span>
-            <span>{formatSom(item.totalPrice)}</span>
+            <span className="font-semibold text-stone-900">{formatSom(item.totalPrice)}</span>
           </div>
         ))}
       </div>
 
-      <button onClick={() => goTo("menu")} className="text-sm text-black/50 underline">
+      <button onClick={() => goTo("menu")} className="text-sm font-semibold text-stone-400 underline">
         Order something else
       </button>
     </div>

@@ -2,7 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Deliberately NOT reading Telegram's --tg-theme-* CSS variables: mixing a
+  dynamic theme-supplied text color with our own hardcoded white cards was
+  exactly what made product names / cart items / typed input text invisible
+  in Telegram Desktop's dark theme (light text inherited onto white
+  surfaces). Fixed palette, always light — consistent regardless of the
+  user's Telegram theme.
+*/
+html {
+  background-color: #f7f4f2;
+}
+
 body {
-  background-color: var(--tg-theme-bg-color, #ffffff);
-  color: var(--tg-theme-text-color, #111111);
+  background-color: #f7f4f2;
+  color: #1c1917;
+}
+
+input,
+textarea {
+  color: #1c1917;
+  background-color: #ffffff;
+  /* iOS Safari/WKWebView (which is what Telegram's iOS client renders with)
+     auto-zooms the whole page on focus when a field's font-size is under
+     16px — every text-sm (14px) input/textarea was triggering this, making
+     the app appear to "break" out of its normal view whenever you tapped
+     Landmark/Notes. 16px is the documented threshold to disable it. */
+  font-size: 16px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #a8a29e;
 }

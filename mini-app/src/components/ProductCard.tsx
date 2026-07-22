@@ -21,19 +21,19 @@ export function ProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-black/5 bg-white p-3 shadow-sm">
+    <div className="flex items-center gap-3 rounded-2xl border border-stone-100 bg-white p-3 shadow-sm">
       {product.imageUrl && (
         <img
           src={product.imageUrl}
           alt=""
-          className="h-16 w-16 shrink-0 rounded-lg object-cover"
+          className="h-16 w-16 shrink-0 rounded-xl border border-stone-100 object-cover"
           loading="lazy"
         />
       )}
       <div className="min-w-0 flex-1">
-        <h3 className="truncate font-semibold">{product.name}</h3>
-        {product.description && <p className="mt-0.5 truncate text-sm text-black/60">{product.description}</p>}
-        <p className="mt-1 text-sm font-medium text-brand">{displayPrice}</p>
+        <h3 className="truncate font-semibold text-stone-900">{product.name}</h3>
+        {product.description && <p className="mt-0.5 truncate text-sm text-stone-400">{product.description}</p>}
+        <p className="mt-1 text-sm font-bold text-brand">{displayPrice}</p>
       </div>
       <button
         onClick={handleAdd}
@@ -55,4 +55,3 @@ export function ProductCard({ product }: { product: Product }) {
     </div>
   );
 }
-
