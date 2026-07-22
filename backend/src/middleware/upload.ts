@@ -18,3 +18,17 @@ export const deliveryProofUpload = multer({
   }),
   limits: { fileSize: 10 * 1024 * 1024 },
 });
+
+const productImageDir = path.join(process.cwd(), "uploads", "products");
+fs.mkdirSync(productImageDir, { recursive: true });
+
+export const productImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: productImageDir,
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || ".jpg";
+      cb(null, `product-${req.params.productId}-${Date.now()}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});

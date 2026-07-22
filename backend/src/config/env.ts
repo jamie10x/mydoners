@@ -11,4 +11,8 @@ export const env = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   jwtSecret: process.env.JWT_SECRET || "dev-secret-change-me",
   courierBotApiKey: process.env.COURIER_BOT_API_KEY ?? "",
+
+  // Admin panel — single-editor scope (see docs/decisions.md), so a shared
+  // password rather than a full user/role system is proportionate.
+  adminPassword: process.env.ADMIN_PASSWORD || "",
 };
