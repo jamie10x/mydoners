@@ -6,6 +6,7 @@ import { MenuPage } from "./pages/MenuPage";
 import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { OrderTrackingPage } from "./pages/OrderTrackingPage";
+import { ProfilePage } from "./pages/ProfilePage";
 
 function AppShell({ children }: { children: ReactNode }) {
   // Locks the whole app to a phone-width column, centered on wider viewports
@@ -63,6 +64,7 @@ export function App() {
       {screen === "cart" && <CartPage />}
       {screen === "checkout" && <CheckoutPage />}
       {screen === "tracking" && <OrderTrackingPage />}
+      {screen === "profile" && <ProfilePage />}
     </AppShell>
   );
 }

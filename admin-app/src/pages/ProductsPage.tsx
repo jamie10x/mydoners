@@ -109,12 +109,16 @@ export function ProductsPage() {
             {products.map((product) => (
               <tr key={product.id} className="border-b border-stone-100 last:border-0 hover:bg-stone-50/60">
                 <td className="px-4 py-2.5">
-                  {product.imageUrl && (
+                  {product.imageUrl ? (
                     <img
                       src={product.imageUrl}
                       alt=""
                       className="h-10 w-10 rounded-lg border border-stone-100 object-cover"
                     />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-stone-100 bg-stone-50">
+                      <img src="/logo.svg" alt="" className="h-5 w-5 rounded opacity-70" />
+                    </div>
                   )}
                 </td>
                 <td className="px-4 py-2.5 font-semibold text-stone-900">{product.name}</td>

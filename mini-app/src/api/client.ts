@@ -18,8 +18,11 @@ async function request<T>(path: string, init: RequestInit = {}, auth = true): Pr
   if (auth && token) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, { ...init, headers });
-  const body = await res.json();
 
+  // 204 (e.g. DELETE) has no body — calling res.json() on it throws.
+  if (res.status === 204) return undefined as T;
+
+  const body = await res.json();
   if (!res.ok) throw new ApiError(body as ErrorEnvelope, res.status);
   return body as T;
 }
@@ -32,4 +35,5 @@ export const api = {
     request<T>(path, { method: "PATCH", body: data ? JSON.stringify(data) : undefined }),
   put: <T>(path: string, data?: unknown) =>
     request<T>(path, { method: "PUT", body: data ? JSON.stringify(data) : undefined }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

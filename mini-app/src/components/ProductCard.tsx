@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Product } from "@mydoners/shared-contracts";
 import { useCartStore } from "../store/cartStore";
 import { VariantModal } from "./VariantModal";
+import { ProductThumbnail } from "./ProductThumbnail";
 import { formatSom } from "../lib/format";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -22,14 +23,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-stone-100 bg-white p-3 shadow-sm">
-      {product.imageUrl && (
-        <img
-          src={product.imageUrl}
-          alt=""
-          className="h-16 w-16 shrink-0 rounded-xl border border-stone-100 object-cover"
-          loading="lazy"
-        />
-      )}
+      <ProductThumbnail imageUrl={product.imageUrl} />
       <div className="min-w-0 flex-1">
         <h3 className="truncate font-semibold text-stone-900">{product.name}</h3>
         {product.description && <p className="mt-0.5 truncate text-sm text-stone-400">{product.description}</p>}

@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 // A single-flow ordering app (menu -> cart -> checkout -> tracking) doesn't
 // need a full router — a small screen-state machine is simpler and avoids
 // pulling in react-router-dom for four linear screens.
-export type Screen = "menu" | "cart" | "checkout" | "tracking";
+export type Screen = "menu" | "cart" | "checkout" | "tracking" | "profile";
 
 interface UiState {
   screen: Screen;
