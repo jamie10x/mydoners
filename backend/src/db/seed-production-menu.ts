@@ -6,10 +6,6 @@ import { db } from "./index";
 import { categories, products } from "./schema";
 import { eq, and } from "drizzle-orm";
 
-// Placeholder until real high-quality photos are uploaded per product via
-// the admin panel (Track: admin-app).
-const PLACEHOLDER_IMAGE = "https://placehold.co/400x300/e2231a/ffffff?text=MyDoners";
-
 interface ProductInput {
   name: string;
   description?: string;
@@ -142,13 +138,15 @@ async function upsertProduct(categoryId: number, input: ProductInput) {
     beefPrice: input.beefPrice !== undefined ? String(input.beefPrice) : null,
     chickenPrice: input.chickenPrice !== undefined ? String(input.chickenPrice) : null,
     isAvailable: true,
-    imageUrl: PLACEHOLDER_IMAGE,
   };
 
   if (existing) {
+    // Deliberately excludes imageUrl — this script is safe to re-run (e.g.
+    // to add a new menu item), and must never clobber a real photo someone
+    // already uploaded via the admin panel.
     await db.update(products).set(values).where(eq(products.id, existing.id));
   } else {
-    await db.insert(products).values(values);
+    await db.insert(products).values({ ...values, imageUrl: null });
   }
 }
 

@@ -17,11 +17,24 @@ export const locationSubmitSchema = z.object({
 
 export type LocationSubmitInput = z.infer<typeof locationSubmitSchema>;
 
-// Saves the checkout's current coordinates as a reusable "Home" shortcut.
-export const homeAddressSchema = z.object({
+// Saved delivery addresses — up to 3 per user, freely labeled (Home, Work,
+// or anything else), enforced in savedAddressService, not here.
+export const savedAddressSchema = z.object({
+  label: z.string().min(1).max(50),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   landmarkAddress: z.string().min(1),
 });
 
-export type HomeAddressInput = z.infer<typeof homeAddressSchema>;
+export type SavedAddressInput = z.infer<typeof savedAddressSchema>;
+
+// Bot-driven onboarding sets these — at least one field, never an empty patch.
+export const profileUpdateSchema = z
+  .object({
+    firstName: z.string().min(1).optional(),
+    lastName: z.string().min(1).optional(),
+    phoneNumber: z.string().min(5).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, { message: "At least one field is required" });
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;

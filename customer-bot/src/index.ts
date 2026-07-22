@@ -1,6 +1,7 @@
 import { Bot, InlineKeyboard, webhookCallback } from "grammy";
 import { env } from "./config/env";
 import { BUSINESS } from "./business";
+import { maybeStartOnboarding, handleOnboardingText, handleOnboardingContact, handleOnboardingLocation } from "./onboarding";
 
 const bot = new Bot(env.botToken);
 
@@ -17,6 +18,11 @@ const helpKeyboard = new InlineKeyboard()
   .url("📢 Channel", BUSINESS.channelUrl);
 
 bot.command("start", async (ctx) => {
+  const telegramId = ctx.from?.id;
+  if (telegramId && (await maybeStartOnboarding(telegramId, (text) => ctx.reply(text)))) {
+    return; // conversation started (or already in progress) instead of the normal welcome
+  }
+
   await ctx.reply(
     `🌯 <b>Welcome to MyDoners!</b>\n${BUSINESS.tagline}\n\n` +
       `Order lavash, pizza, KFC, hotdogs and more — delivered straight to you.\n\n` +
@@ -39,12 +45,36 @@ bot.command("help", async (ctx) => {
   );
 });
 
-// Checkout's browser-geolocation fallback: the Mini App calls
-// POST /users/:telegramId/location-request, which messages the user here
-// with a native "share location" button; this forwards what they share back
-// to the backend so the Mini App (polling GET .../location) can pick it up.
+// Onboarding's text-answer steps (first name, last name, or typing "skip")
+// — falls through to the generic catch-all below if no conversation is
+// actually in progress for this user.
+bot.on("message:text", async (ctx, next) => {
+  if (ctx.message.text.startsWith("/")) return next();
+  const handled = await handleOnboardingText(ctx.from.id, ctx.message.text, {
+    reply: (text, replyMarkup) => ctx.reply(text, replyMarkup ? { reply_markup: replyMarkup } as never : undefined),
+  });
+  if (!handled) return next();
+});
+
+// Onboarding's phone step, via Telegram's native contact-share widget.
+bot.on("message:contact", async (ctx) => {
+  await handleOnboardingContact(ctx.from.id, ctx.message.contact.phone_number, {
+    reply: (text, replyMarkup) => ctx.reply(text, replyMarkup ? { reply_markup: replyMarkup } as never : undefined),
+  });
+});
+
+// Shared by two flows: onboarding's location step, and checkout's
+// browser-geolocation fallback (Mini App calls POST
+// /users/:telegramId/location-request, which messages the user here with a
+// native "share location" button; this forwards what they share back to the
+// backend so the Mini App, polling GET .../location, can pick it up).
 bot.on("message:location", async (ctx) => {
   const { latitude, longitude } = ctx.message.location;
+  const handledByOnboarding = await handleOnboardingLocation(ctx.from.id, latitude, longitude, {
+    reply: (text, replyMarkup) => ctx.reply(text, replyMarkup ? { reply_markup: replyMarkup } as never : undefined),
+  });
+  if (handledByOnboarding) return;
+
   try {
     const res = await fetch(`${env.backendUrl}/users/${ctx.from.id}/location`, {
       method: "POST",

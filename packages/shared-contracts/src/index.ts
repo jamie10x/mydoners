@@ -127,7 +127,9 @@ export interface DeliveryConfirmedData {
   proofPhotoUrl: string | null;
 }
 
-export interface HomeAddress {
+export interface SavedAddress {
+  id: number;
+  label: string;
   latitude: number;
   longitude: number;
   landmarkAddress: string;
@@ -142,7 +144,9 @@ export interface PublicUser {
   isPhoneVerified: boolean;
   completedOrdersCount: number;
   isBlacklisted: boolean;
-  homeAddress: HomeAddress | null;
+  // True once name, phone, and at least one saved address all exist — lets
+  // the Mini App show a "finish your profile" nudge instead of guessing.
+  isProfileComplete: boolean;
 }
 
 export interface Category {

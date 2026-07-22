@@ -9,6 +9,6 @@ export const authService = {
     const user = await userRepository.upsertFromTelegram(profile);
     const token = signSessionToken(user.telegramId);
 
-    return { token, user: mapPublicUser(user) };
+    return { token, user: await mapPublicUser(user) };
   },
 };

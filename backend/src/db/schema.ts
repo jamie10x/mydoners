@@ -41,13 +41,21 @@ export const users = pgTable("users", {
   cancelledOrdersCount: integer("cancelled_orders_count").default(0),
   isBlacklisted: boolean("is_blacklisted").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
 
-  // Saved "Home" delivery shortcut — most orders happen from home, so this
-  // skips re-sharing location every checkout. Single slot by design (not a
-  // full saved-addresses table) — see docs/decisions.md if that changes.
-  homeLatitude: doublePrecision("home_latitude"),
-  homeLongitude: doublePrecision("home_longitude"),
-  homeLandmarkAddress: text("home_landmark_address"),
+// Up to 3 per user (enforced in savedAddressService, not here) — Home, Work,
+// or any custom label. Replaced the single home-address columns that used
+// to live on `users` once more than one saved spot was needed.
+export const savedAddresses = pgTable("saved_addresses", {
+  id: serial("id").primaryKey(),
+  userId: bigint("user_id", { mode: "number" })
+    .references(() => users.telegramId, { onDelete: "cascade" })
+    .notNull(),
+  label: varchar("label", { length: 50 }).notNull(),
+  latitude: doublePrecision("latitude").notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  landmarkAddress: text("landmark_address").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 // order_status, payment_type, payment_status are enforced at the app layer via

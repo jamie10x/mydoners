@@ -1,8 +1,21 @@
 import type { Request, Response } from "express";
-import { userService } from "../services/userService";
+import { userService, mapPublicUser } from "../services/userService";
 import { locationRequestService } from "../services/locationRequestService";
-import { phoneVerifySchema, locationSubmitSchema, homeAddressSchema } from "../dto/user.dto";
-import { ForbiddenError, ValidationError } from "../errors/AppError";
+import { savedAddressService } from "../services/savedAddressService";
+import { userRepository } from "../repositories/userRepository";
+import {
+  phoneVerifySchema,
+  locationSubmitSchema,
+  savedAddressSchema,
+  profileUpdateSchema,
+} from "../dto/user.dto";
+import { ForbiddenError, ValidationError, NotFoundError } from "../errors/AppError";
+
+function assertSelfOrBot(req: Request, telegramId: number) {
+  if (req.actor?.type === "bot") return;
+  if (req.actor?.type === "user" && req.actor.telegramId === telegramId) return;
+  throw new ForbiddenError("Can only act on your own account");
+}
 
 export const userController = {
   async verifyPhone(req: Request, res: Response) {
@@ -16,6 +29,29 @@ export const userController = {
 
     const isPhoneVerified = await userService.verifyPhone(telegramId, parsed.data.phoneNumber);
     res.json({ isPhoneVerified });
+  },
+
+  // Read by both the Mini App (to show its own profile) and the customer
+  // bot (to decide whether onboarding is still needed).
+  async getProfile(req: Request, res: Response) {
+    const telegramId = Number(req.params.telegramId);
+    assertSelfOrBot(req, telegramId);
+
+    const user = await userRepository.findByTelegramId(telegramId);
+    if (!user) throw new NotFoundError(`User ${telegramId} not found`);
+    res.json({ user: await mapPublicUser(user) });
+  },
+
+  // Bot-driven onboarding (first name / last name / phone) — see customer-bot.
+  async updateProfile(req: Request, res: Response) {
+    const telegramId = Number(req.params.telegramId);
+    assertSelfOrBot(req, telegramId);
+
+    const parsed = profileUpdateSchema.safeParse(req.body);
+    if (!parsed.success) throw new ValidationError("Invalid profile payload", { issues: parsed.error.issues });
+
+    const user = await userService.updateProfile(telegramId, parsed.data);
+    res.json({ user });
   },
 
   // Checkout fallback when browser geolocation is denied/unavailable — asks
@@ -57,23 +93,50 @@ export const userController = {
     res.status(204).send();
   },
 
-  // Saves the checkout's current coordinates as the reusable "Home" shortcut
-  // — most orders happen from home, so this skips re-sharing location later.
-  async saveHomeAddress(req: Request, res: Response) {
+  // Saved delivery addresses — up to 3, freely labeled (Home/Work/custom).
+  async listAddresses(req: Request, res: Response) {
     const telegramId = Number(req.params.telegramId);
-    if (req.actor?.type !== "user" || req.actor.telegramId !== telegramId) {
-      throw new ForbiddenError("Can only save your own home address");
-    }
+    assertSelfOrBot(req, telegramId);
+    res.json(await savedAddressService.list(telegramId));
+  },
 
-    const parsed = homeAddressSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Invalid home address payload", { issues: parsed.error.issues });
+  async createAddress(req: Request, res: Response) {
+    const telegramId = Number(req.params.telegramId);
+    assertSelfOrBot(req, telegramId);
 
-    const user = await userService.saveHomeAddress(
+    const parsed = savedAddressSchema.safeParse(req.body);
+    if (!parsed.success) throw new ValidationError("Invalid address payload", { issues: parsed.error.issues });
+
+    const address = await savedAddressService.create(
       telegramId,
+      parsed.data.label,
       parsed.data.latitude,
       parsed.data.longitude,
       parsed.data.landmarkAddress,
     );
-    res.json({ user });
+    res.status(201).json(address);
+  },
+
+  async updateAddress(req: Request, res: Response) {
+    const telegramId = Number(req.params.telegramId);
+    if (req.actor?.type !== "user" || req.actor.telegramId !== telegramId) {
+      throw new ForbiddenError("Can only edit your own saved addresses");
+    }
+
+    const parsed = savedAddressSchema.partial().safeParse(req.body);
+    if (!parsed.success) throw new ValidationError("Invalid address payload", { issues: parsed.error.issues });
+
+    const address = await savedAddressService.update(telegramId, Number(req.params.addressId), parsed.data);
+    res.json(address);
+  },
+
+  async deleteAddress(req: Request, res: Response) {
+    const telegramId = Number(req.params.telegramId);
+    if (req.actor?.type !== "user" || req.actor.telegramId !== telegramId) {
+      throw new ForbiddenError("Can only delete your own saved addresses");
+    }
+
+    await savedAddressService.delete(telegramId, Number(req.params.addressId));
+    res.status(204).send();
   },
 };

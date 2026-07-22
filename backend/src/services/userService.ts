@@ -1,9 +1,14 @@
 import { userRepository } from "../repositories/userRepository";
+import { savedAddressRepository } from "../repositories/savedAddressRepository";
 import type { PublicUser } from "@mydoners/shared-contracts";
 
 type UserRow = Awaited<ReturnType<typeof userRepository.findByTelegramId>>;
 
-export function mapPublicUser(user: NonNullable<UserRow>): PublicUser {
+export async function mapPublicUser(user: NonNullable<UserRow>): Promise<PublicUser> {
+  const addressCount = await savedAddressRepository.countByUser(user.telegramId);
+  const hasName = Boolean(user.firstName && user.lastName);
+  const hasPhone = Boolean(user.phoneNumber);
+
   return {
     telegramId: user.telegramId,
     firstName: user.firstName ?? "",
@@ -13,10 +18,7 @@ export function mapPublicUser(user: NonNullable<UserRow>): PublicUser {
     isPhoneVerified: user.isPhoneVerified ?? false,
     completedOrdersCount: user.completedOrdersCount ?? 0,
     isBlacklisted: user.isBlacklisted ?? false,
-    homeAddress:
-      user.homeLatitude !== null && user.homeLongitude !== null && user.homeLandmarkAddress !== null
-        ? { latitude: user.homeLatitude, longitude: user.homeLongitude, landmarkAddress: user.homeLandmarkAddress }
-        : null,
+    isProfileComplete: hasName && hasPhone && addressCount > 0,
   };
 }
 
@@ -42,15 +44,19 @@ export const userService = {
     return true;
   },
 
-  async saveHomeAddress(
+  /**
+   * Used by the customer bot's onboarding conversation (name/last name text
+   * replies, phone via its own request_contact widget — a first-party
+   * Telegram signal at least as trustworthy as the Mini App's phone-verify
+   * flow above, so it also marks isPhoneVerified when a phone is included).
+   */
+  async updateProfile(
     telegramId: number,
-    latitude: number,
-    longitude: number,
-    landmarkAddress: string,
+    patch: { firstName?: string; lastName?: string; phoneNumber?: string },
   ): Promise<PublicUser> {
-    await userRepository.setHomeAddress(telegramId, latitude, longitude, landmarkAddress);
+    await userRepository.updateProfile(telegramId, patch);
     const user = await userRepository.findByTelegramId(telegramId);
-    if (!user) throw new Error(`User ${telegramId} not found after saving home address`);
-    return mapPublicUser(user);
+    if (!user) throw new Error(`User ${telegramId} not found after updating profile`);
+    return await mapPublicUser(user);
   },
 };

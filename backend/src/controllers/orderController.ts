@@ -4,6 +4,7 @@ import { orderService } from "../services/orderService";
 import { otpService } from "../services/otpService";
 import { createOrderSchema, updateOrderStatusSchema, verifyOtpSchema } from "../dto/order.dto";
 import { ForbiddenError, ValidationError } from "../errors/AppError";
+import { env } from "../config/env";
 
 const VALID_STATUSES: OrderStatus[] = [
   "PENDING",
@@ -88,7 +89,7 @@ export const orderController = {
     const file = req.file;
     if (!file) throw new ValidationError("Delivery-proof photo is required");
 
-    const photoUrl = `/uploads/delivery-proof/${file.filename}`;
+    const photoUrl = `${env.publicApiUrl}/uploads/delivery-proof/${file.filename}`;
     const order = await orderService.confirmDelivery(orderId, photoUrl, req.body.cashConfirmationCode ?? null);
     res.json(order);
   },

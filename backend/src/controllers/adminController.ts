@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { adminService } from "../services/adminService";
 import { checkAdminPassword, signAdminToken } from "../middleware/adminAuth";
+import { env } from "../config/env";
 import {
   adminLoginSchema,
   categoryCreateSchema,
@@ -63,7 +64,7 @@ export const adminController = {
   async uploadProductImage(req: Request, res: Response) {
     const file = req.file;
     if (!file) throw new ValidationError("Image file is required");
-    const imageUrl = `/uploads/products/${file.filename}`;
+    const imageUrl = `${env.publicApiUrl}/uploads/products/${file.filename}`;
     const product = await adminService.updateProduct(Number(req.params.productId), { imageUrl });
     res.json(product);
   },
