@@ -1,0 +1,88 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two deploys at once against the same server.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      # Fail fast, before touching the server, if anything doesn't typecheck.
+      - name: Typecheck backend
+        run: cd backend && bunx tsc --noEmit
+
+      - name: Typecheck mini-app
+        run: cd mini-app && bunx tsc --noEmit
+
+      - name: Typecheck admin-app
+        run: cd admin-app && bunx tsc --noEmit
+
+      - name: Typecheck courier-bot
+        run: cd courier-bot && bunx tsc --noEmit
+
+      - name: Typecheck customer-bot
+        run: cd customer-bot && bunx tsc --noEmit
+
+      # Reads mini-app/.env.production / admin-app/.env.production (already
+      # committed — VITE_BACKEND_URL is a public URL, not a secret).
+      - name: Build Mini App
+        run: cd mini-app && bun run build
+
+      - name: Build Admin App
+        run: cd admin-app && bun run build
+
+      - name: Install deploy tools
+        run: sudo apt-get update && sudo apt-get install -y sshpass rsync
+
+      - name: Trust VPS host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      # No --delete here: /opt/mydoners on the server also holds .env.prod
+      # files and Multer-uploaded product photos that aren't in this repo.
+      - name: Sync source to VPS
+        run: |
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" rsync -az \
+            --exclude 'node_modules' --exclude '.git' --exclude '.env*' \
+            --exclude 'dist' --exclude 'uploads' --exclude '.github' \
+            --exclude 'android-kds' \
+            ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/mydoners/"
+
+      - name: Deploy Mini App static build
+        run: |
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" rsync -az --delete \
+            mini-app/dist/ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/mydoners.uz/"
+
+      - name: Deploy Admin App static build
+        run: |
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" rsync -az --delete \
+            admin-app/dist/ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/admin.mydoners.uz/"
+
+      - name: Rebuild and restart backend services
+        run: |
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" '
+            set -e
+            cd /opt/mydoners
+            docker compose --env-file .env.prod -f docker-compose.prod.yml build
+            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+            docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T backend bun run src/db/migrate.ts
+          '

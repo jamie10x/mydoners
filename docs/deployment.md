@@ -38,11 +38,16 @@ This server already runs nginx (ports 80/443), a native PostgreSQL on 5432/5433,
 
 ## Redeploying after a code change
 
+**Automatic (normal path):** pushing to `main` on [github.com/jamie10x/mydoners](https://github.com/jamie10x/mydoners) triggers `.github/workflows/deploy.yml`, which typechecks every workspace, builds the Mini App and admin panel, rsyncs the repo to `/opt/mydoners` (excluding `.env*`, `uploads/`, `node_modules` — those stay server-only), rsyncs the static builds to their `/var/www/*` dirs, then rebuilds and restarts the Docker services and runs migrations. GitHub Actions authenticates over SSH using the `VPS_HOST` / `VPS_USER` / `VPS_PASSWORD` repo secrets — rotate `VPS_PASSWORD` (both on the server and in the GitHub secret) if it's ever suspected of leaking, same as any other credential.
+
+**Manual (if you need to bypass CI, or CI isn't set up on a fresh checkout):**
+
 ```bash
 cd /opt/mydoners
-git pull   # or re-rsync from local, if not using a git remote yet
+git pull   # or re-rsync from local
 docker compose --env-file .env.prod -f docker-compose.prod.yml build
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend bun run src/db/migrate.ts
 ```
 
 ## What's still a stub
