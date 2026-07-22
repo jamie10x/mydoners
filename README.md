@@ -12,6 +12,7 @@ See [`docs/`](./docs) for the full system contracts and the execution roadmap th
 | [`mini-app/`](./mini-app) | React, TypeScript, Vite, Tailwind, Zustand, `@telegram-apps/sdk` | Customer ordering Telegram Mini App |
 | [`android-kds/`](./android-kds) | Kotlin, Jetpack Compose, Coroutines, OkHttp/Ktor | Kitchen Display System (wall-mounted tablet) |
 | [`courier-bot/`](./courier-bot) | Bun, grammY, TypeScript | Telegram bot for the dedicated courier |
+| [`admin-app/`](./admin-app) | React, TypeScript, Vite, Tailwind, Zustand | Password-protected menu (categories/products) management |
 | [`packages/shared-contracts/`](./packages/shared-contracts) | TypeScript | Hand-written types shared by backend, mini-app, courier-bot |
 | [`docs/`](./docs) | — | OpenAPI spec, WebSocket event catalog, auth contract, resolved open decisions |
 
@@ -48,4 +49,4 @@ Phase 0 (contracts & foundations), Phase 1 (happy-path buildout), and Phase 2 (a
 
 Two pieces are honest stubs, not fake integrations: SMS OTP delivery (`StubSmsProvider`, pending real Eskiz.uz credentials) and Click/Payme payment processing (`StubPaymentProvider`, pending real merchant accounts — registration/KYC approval is the actual bottleneck, not implementation). Both sit behind interfaces so swapping in real implementations doesn't touch the rest of the app. See `docs/decisions.md` for the full reasoning.
 
-Next up is Phase 3 (deployment) — see the execution roadmap (the plan file this repo was scaffolded from) for the full phased sequence.
+**Phase 3 (deployment) is live**, at `mydoners.uz` (Mini App), `api.mydoners.uz` (backend), and `admin.mydoners.uz` (menu admin panel) — see `docs/deployment.md` for how it's set up and kept isolated from the other projects sharing that server.
