@@ -24,9 +24,10 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm">
-        <h1 className="mb-1 text-xl font-bold">MyDoners Admin</h1>
-        <p className="mb-6 text-sm text-black/50">Menu management</p>
+      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-7 shadow-sm">
+        <img src="/logo.svg" alt="" className="mb-4 h-12 w-12 rounded-xl" />
+        <h1 className="mb-1 text-xl font-extrabold text-stone-900">MyDoners Admin</h1>
+        <p className="mb-6 text-sm text-stone-400">Menu management</p>
 
         <input
           type="password"
@@ -34,10 +35,10 @@ export function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
           autoFocus
-          className="mb-3 w-full rounded-lg border border-black/10 px-3 py-2 text-sm"
+          className="mb-3 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
         />
 
-        {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+        {error && <p className="mb-3 text-sm font-medium text-red-600">{error}</p>}
 
         <button
           type="submit"

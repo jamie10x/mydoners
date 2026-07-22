@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" rx="40" fill="#e2231a"/>
+  <g fill="#ffffff">
+    <!-- knife: blade + handle, angled top-right -->
+    <path d="M108 18 L150 55 C154 59 154 65 149 68 L140 76 L94 40 Z"/>
+    <rect x="86" y="30" width="42" height="9" rx="4" transform="rotate(42 107 34)"/>
+    <!-- skewer strip: zigzag "M" ribbon of shaved meat -->
+    <path d="M46 78
+             C66 66 84 66 100 80
+             C116 94 134 94 154 78
+             L154 100
+             C134 116 116 116 100 102
+             C84 88 66 88 46 100
+             Z"/>
+    <path d="M46 108
+             C64 98 80 98 96 110
+             C112 122 128 122 146 108
+             L146 126
+             C128 140 112 140 96 128
+             C80 116 64 116 46 126
+             Z"/>
+    <!-- skewer stick continuing down -->
+    <rect x="96" y="128" width="10" height="46" rx="5" transform="rotate(8 101 151)"/>
+  </g>
+</svg>

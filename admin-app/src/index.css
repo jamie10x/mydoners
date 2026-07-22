@@ -3,5 +3,18 @@
 @tailwind utilities;
 
 body {
-  background-color: #f4f4f5;
+  background-color: #f7f4f2;
+  color: #1c1917;
+}
+
+input,
+textarea,
+select {
+  color: #1c1917;
+  background-color: #ffffff;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #a8a29e;
 }

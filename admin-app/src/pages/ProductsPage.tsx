@@ -67,64 +67,89 @@ export function ProductsPage() {
 
   const categoryById = new Map(categories.map((c) => [c.id, c.name]));
 
-  if (loading) return <p className="text-black/40">Loading…</p>;
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-14 animate-pulse rounded-xl bg-stone-200/60" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div>
       <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageSelected} />
 
-      <div className="mb-4 flex justify-between">
-        <h2 className="text-lg font-bold">Products ({products.length})</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-extrabold text-stone-900">
+          Products <span className="font-medium text-stone-400">({products.length})</span>
+        </h2>
         <button
           onClick={() => setEditing("new")}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand/20"
         >
           + Add product
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-black/5 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="border-b border-black/5 text-left text-black/50">
+          <thead className="border-b border-stone-100 text-left text-xs font-bold uppercase tracking-wide text-stone-400">
             <tr>
-              <th className="px-4 py-2">Photo</th>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2">Category</th>
-              <th className="px-4 py-2">Price</th>
-              <th className="px-4 py-2">Available</th>
-              <th className="px-4 py-2">Actions</th>
+              <th className="px-4 py-3">Photo</th>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Category</th>
+              <th className="px-4 py-3">Price</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {products.map((product) => (
-              <tr key={product.id} className="border-b border-black/5 last:border-0">
-                <td className="px-4 py-2">
+              <tr key={product.id} className="border-b border-stone-100 last:border-0 hover:bg-stone-50/60">
+                <td className="px-4 py-2.5">
                   {product.imageUrl && (
-                    <img src={product.imageUrl} alt="" className="h-10 w-10 rounded object-cover" />
+                    <img
+                      src={product.imageUrl}
+                      alt=""
+                      className="h-10 w-10 rounded-lg border border-stone-100 object-cover"
+                    />
                   )}
                 </td>
-                <td className="px-4 py-2 font-medium">{product.name}</td>
-                <td className="px-4 py-2 text-black/60">
+                <td className="px-4 py-2.5 font-semibold text-stone-900">{product.name}</td>
+                <td className="px-4 py-2.5 text-stone-500">
                   {product.categoryId ? categoryById.get(product.categoryId) : "—"}
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2.5 font-mono text-xs text-stone-700">
                   {product.hasMeatChoice
                     ? `${formatSom(product.chickenPrice)} – ${formatSom(product.beefPrice)}`
                     : formatSom(product.basePrice)}
                 </td>
-                <td className="px-4 py-2">
-                  <button onClick={() => handleToggleAvailable(product)}>
-                    {product.isAvailable ? "✅" : "🚫"}
+                <td className="px-4 py-2.5">
+                  <button
+                    onClick={() => handleToggleAvailable(product)}
+                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                      product.isAvailable ? "bg-green-100 text-green-700" : "bg-stone-200 text-stone-500"
+                    }`}
+                  >
+                    {product.isAvailable ? "Available" : "Hidden"}
                   </button>
                 </td>
-                <td className="whitespace-nowrap px-4 py-2">
-                  <button onClick={() => triggerImageUpload(product.id)} className="mr-3 text-black/50 hover:text-black">
+                <td className="whitespace-nowrap px-4 py-2.5">
+                  <button
+                    onClick={() => triggerImageUpload(product.id)}
+                    className="mr-3 text-sm font-medium text-stone-500 hover:text-stone-900"
+                  >
                     Photo
                   </button>
-                  <button onClick={() => setEditing(product)} className="mr-3 text-black/50 hover:text-black">
+                  <button
+                    onClick={() => setEditing(product)}
+                    className="mr-3 text-sm font-medium text-stone-500 hover:text-stone-900"
+                  >
                     Edit
                   </button>
-                  <button onClick={() => handleDelete(product)} className="text-red-600 hover:text-red-800">
+                  <button onClick={() => handleDelete(product)} className="text-sm font-medium text-red-600 hover:text-red-800">
                     Delete
                   </button>
                 </td>

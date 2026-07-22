@@ -15,29 +15,46 @@ export function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-black/5 bg-white px-6 py-4">
-        <h1 className="text-lg font-bold">MyDoners Admin</h1>
-        <button onClick={clearToken} className="text-sm text-black/50 hover:text-black">
-          Sign out
-        </button>
+      <header className="border-b border-stone-200 bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <img src="/logo.svg" alt="" className="h-9 w-9 rounded-lg" />
+            <div>
+              <h1 className="text-base font-extrabold leading-tight text-stone-900">MyDoners Admin</h1>
+              <p className="text-xs text-stone-400">Menu management</p>
+            </div>
+          </div>
+          <button
+            onClick={clearToken}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
-      <nav className="flex gap-2 px-6 pt-4">
-        <button
-          onClick={() => setTab("products")}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium ${tab === "products" ? "bg-brand text-white" : "bg-black/5"}`}
-        >
-          Products
-        </button>
-        <button
-          onClick={() => setTab("categories")}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium ${tab === "categories" ? "bg-brand text-white" : "bg-black/5"}`}
-        >
-          Categories
-        </button>
-      </nav>
+      <div className="mx-auto max-w-5xl px-6">
+        <nav className="flex gap-2 pt-5">
+          <button
+            onClick={() => setTab("products")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+              tab === "products" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
+            }`}
+          >
+            Products
+          </button>
+          <button
+            onClick={() => setTab("categories")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+              tab === "categories" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
+            }`}
+          >
+            Categories
+          </button>
+        </nav>
 
-      <main className="p-6">{tab === "products" ? <ProductsPage /> : <CategoriesPage />}</main>
+        <main className="py-6">{tab === "products" ? <ProductsPage /> : <CategoriesPage />}</main>
+      </div>
     </div>
   );
 }

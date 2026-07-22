@@ -12,6 +12,7 @@ See [`docs/`](./docs) for the full system contracts and the execution roadmap th
 | [`mini-app/`](./mini-app) | React, TypeScript, Vite, Tailwind, Zustand, `@telegram-apps/sdk` | Customer ordering Telegram Mini App |
 | [`android-kds/`](./android-kds) | Kotlin, Jetpack Compose, Coroutines, OkHttp/Ktor | Kitchen Display System (wall-mounted tablet) |
 | [`courier-bot/`](./courier-bot) | Bun, grammY, TypeScript | Telegram bot for the dedicated courier |
+| [`customer-bot/`](./customer-bot) | Bun, grammY, TypeScript | `/start` and `/help` for `@mydoner_bot` outside the Mini App (hours, contact, socials) |
 | [`admin-app/`](./admin-app) | React, TypeScript, Vite, Tailwind, Zustand | Password-protected menu (categories/products) management |
 | [`packages/shared-contracts/`](./packages/shared-contracts) | TypeScript | Hand-written types shared by backend, mini-app, courier-bot |
 | [`docs/`](./docs) | — | OpenAPI spec, WebSocket event catalog, auth contract, resolved open decisions |

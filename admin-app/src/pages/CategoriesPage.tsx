@@ -37,7 +37,15 @@ export function CategoriesPage() {
     reload();
   }
 
-  if (loading) return <p className="text-black/40">Loading…</p>;
+  if (loading) {
+    return (
+      <div className="flex max-w-xl flex-col gap-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-12 animate-pulse rounded-xl bg-stone-200/60" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl">
@@ -47,9 +55,12 @@ export function CategoriesPage() {
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="New category name"
-          className="flex-1 rounded-lg border border-black/10 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
         />
-        <button onClick={handleAdd} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+        <button
+          onClick={handleAdd}
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand/20"
+        >
           Add
         </button>
       </div>
@@ -58,14 +69,14 @@ export function CategoriesPage() {
         {categories.map((category) => (
           <div
             key={category.id}
-            className="flex items-center justify-between rounded-lg border border-black/5 bg-white px-4 py-3"
+            className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm"
           >
-            <span className="font-medium">{category.name}</span>
+            <span className="font-semibold text-stone-900">{category.name}</span>
             <div className="flex gap-3 text-sm">
-              <button onClick={() => handleRename(category)} className="text-black/50 hover:text-black">
+              <button onClick={() => handleRename(category)} className="font-medium text-stone-500 hover:text-stone-900">
                 Rename
               </button>
-              <button onClick={() => handleDelete(category)} className="text-red-600 hover:text-red-800">
+              <button onClick={() => handleDelete(category)} className="font-medium text-red-600 hover:text-red-800">
                 Delete
               </button>
             </div>
