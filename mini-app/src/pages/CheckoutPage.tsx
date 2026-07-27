@@ -10,6 +10,11 @@ import { useTelegramLocationFallback } from "../hooks/useTelegramLocationFallbac
 import { useSavedAddresses } from "../hooks/useSavedAddresses";
 import type { Coords, GeoStatus } from "../components/MapPicker";
 import { formatSom } from "../lib/format";
+import { normalizeUzPhone } from "../lib/phone";
+
+// Keep in sync with customer-bot/src/business.ts — used when cash payment is
+// blocked and there's no online method to fall back to.
+const RESTAURANT_PHONE = "+998 88 422 33 22";
 
 // MapLibre GL JS is ~330KB gzipped — code-split so it's not part of the
 // initial Menu bundle, only fetched once someone actually reaches checkout.
@@ -40,6 +45,9 @@ export function CheckoutPage() {
   const [codBlocked, setCodBlocked] = useState(false);
   const [savingLabel, setSavingLabel] = useState<string | null>(null); // non-null while the label input is open
   const [saving, setSaving] = useState(false);
+  // Set right after a successful submit — drives the brief full-screen
+  // confirmation before jumping to tracking.
+  const [placedOrderId, setPlacedOrderId] = useState<number | null>(null);
 
   const user = useAuthStore((s) => s.user);
   const phoneVerification = usePhoneVerification();
@@ -59,11 +67,14 @@ export function CheckoutPage() {
   const awaitingTelegramLocation = useCheckoutStore((s) => s.awaitingTelegramLocation);
   const setAwaitingTelegramLocation = useCheckoutStore((s) => s.setAwaitingTelegramLocation);
 
+  const normalizedPhone = normalizeUzPhone(customerPhone);
+  const phoneInvalid = customerPhone.trim().length > 0 && normalizedPhone === null;
+
   const canSubmit =
     coords !== null &&
     landmarkAddress.trim().length > 0 &&
     customerName.trim().length > 0 &&
-    customerPhone.trim().length > 0 &&
+    normalizedPhone !== null &&
     !submitting;
 
   // Prefill from the profile once — never overwrites something already typed
@@ -123,7 +134,7 @@ export function CheckoutPage() {
   }
 
   async function handlePlaceOrder() {
-    if (!coords) return;
+    if (!coords || !normalizedPhone) return;
     setSubmitting(true);
     setError(null);
     setCodBlocked(false);
@@ -140,17 +151,22 @@ export function CheckoutPage() {
         landmarkAddress: landmarkAddress.trim(),
         courierNotes: courierNotes.trim() || null,
         customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
+        customerPhone: normalizedPhone,
       });
       clearCart();
       useCheckoutStore.getState().reset();
-      setActiveOrder(order.id);
+      // Brief success moment first — the jump to tracking otherwise feels
+      // like the tap might not have registered.
+      setPlacedOrderId(order.id);
+      setTimeout(() => setActiveOrder(order.id), 1800);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.envelope.message);
+        // Don't auto-switch payment: the online methods are still "coming
+        // soon", so switching would strand the user on a disabled option.
+        // The codBlocked banner below explains what to do instead.
         if (err.envelope.code === "COD_BLOCKED") {
           setCodBlocked(true);
-          setPaymentType("CLICK");
         }
       } else {
         setError("Failed to place order. Please try again.");
@@ -158,6 +174,18 @@ export function CheckoutPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (placedOrderId !== null) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+        <div className="flex h-20 w-20 animate-[pop_0.35s_ease-out] items-center justify-center rounded-full bg-green-100 text-5xl">
+          ✅
+        </div>
+        <p className="text-xl font-extrabold text-stone-900">Order placed!</p>
+        <p className="text-sm font-medium text-stone-500">Order #{placedOrderId} — taking you to tracking…</p>
+      </div>
+    );
   }
 
   return (
@@ -188,8 +216,15 @@ export function CheckoutPage() {
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 placeholder="+998 90 123 45 67"
                 inputMode="tel"
-                className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand ${
+                  phoneInvalid ? "border-red-300" : "border-stone-200"
+                }`}
               />
+              {phoneInvalid && (
+                <p className="text-xs font-medium text-red-600">
+                  Enter a valid Uzbek number — e.g. +998 90 123 45 67
+                </p>
+              )}
             </div>
           </section>
 
@@ -316,9 +351,17 @@ export function CheckoutPage() {
           <section>
             <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Payment</h2>
             {codBlocked && (
-              <p className="mb-2 text-sm font-medium text-red-600">
-                Cash on Delivery isn't available for this order — pick Click or Payme instead.
-              </p>
+              <div className="mb-2 rounded-xl bg-red-50 px-3 py-2.5">
+                <p className="text-sm font-medium text-red-700">
+                  Cash on Delivery isn't available for this order right now.
+                </p>
+                <p className="mt-1 text-xs text-red-600">
+                  Please call us and we'll sort it out —{" "}
+                  <a href={`tel:${RESTAURANT_PHONE.replace(/\s/g, "")}`} className="font-bold underline">
+                    {RESTAURANT_PHONE}
+                  </a>
+                </p>
+              </div>
             )}
             <div className="flex flex-col gap-2">
               {PAYMENT_OPTIONS.map((option) => {

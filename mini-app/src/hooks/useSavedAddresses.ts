@@ -5,13 +5,16 @@ import { api } from "../api/client";
 export function useSavedAddresses(telegramId: number | undefined) {
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const reload = useCallback(() => {
     if (!telegramId) return;
     setLoading(true);
+    setLoadFailed(false);
     api
       .get<SavedAddress[]>(`/users/${telegramId}/addresses`)
       .then(setAddresses)
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoading(false));
   }, [telegramId]);
 
@@ -35,5 +38,5 @@ export function useSavedAddresses(telegramId: number | undefined) {
     setAddresses((prev) => prev.filter((a) => a.id !== addressId));
   }
 
-  return { addresses, loading, create, remove, reload };
+  return { addresses, loading, loadFailed, create, remove, reload };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Order } from "@mydoners/shared-contracts";
-import { api } from "../api/client";
+import { api, ApiError } from "../api/client";
 import { useUiStore } from "../store/uiStore";
 
 const TERMINAL_STATUSES: Order["status"][] = ["DELIVERED", "CANCELLED"];
@@ -33,7 +33,16 @@ export function useResumeActiveOrder(authReady: boolean) {
           goTo("tracking");
         }
       })
-      .catch(() => clearActiveOrder());
+      .catch((err) => {
+        // Forget the order only when the server definitively says it's gone
+        // (404). A launch-time network blip must not erase a live delivery —
+        // jump to tracking anyway; that screen has its own retry UI.
+        if (err instanceof ApiError && err.status === 404) {
+          clearActiveOrder();
+        } else {
+          goTo("tracking");
+        }
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authReady, activeOrderId]);
 }

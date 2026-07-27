@@ -35,3 +35,18 @@ input::placeholder,
 textarea::placeholder {
   color: #a8a29e;
 }
+
+/* Order-placed checkmark scale-in (see CheckoutPage's success overlay). */
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Category, Product } from "@mydoners/shared-contracts";
 import { api } from "../api/client";
 import { CategoryTabs } from "../components/CategoryTabs";
+import { ErrorState } from "../components/ErrorState";
 import { ProductCard } from "../components/ProductCard";
 import { useCartStore } from "../store/cartStore";
 import { useUiStore } from "../store/uiStore";
@@ -20,6 +21,9 @@ export function MenuPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumping this refetches both categories and products — the Retry action.
+  const [reloadKey, setReloadKey] = useState(0);
 
   const itemCount = useCartStore((s) => s.itemCount());
   const totalAmount = useCartStore((s) => s.totalAmount());
@@ -27,17 +31,24 @@ export function MenuPage() {
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    api.get<Category[]>("/categories").then(setCategories);
-  }, []);
+    // Categories failing alone isn't fatal (the "All" view still works), so
+    // only the products request drives the error state below.
+    api
+      .get<Category[]>("/categories")
+      .then(setCategories)
+      .catch(() => {});
+  }, [reloadKey]);
 
   useEffect(() => {
     setLoading(true);
+    setLoadFailed(false);
     const query = activeCategoryId ? `?categoryId=${activeCategoryId}` : "";
     api
       .get<PaginatedProducts>(`/products${query}`)
       .then((res) => setProducts(res.items))
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoading(false));
-  }, [activeCategoryId]);
+  }, [activeCategoryId, reloadKey]);
 
   return (
     // relative + min-h-0 so the scrollable area below can size correctly
@@ -76,10 +87,16 @@ export function MenuPage() {
             Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-24 animate-pulse rounded-2xl bg-stone-200/60" />
             ))}
-          {!loading && products.length === 0 && (
+          {!loading && loadFailed && (
+            <ErrorState
+              message="Couldn't load the menu — check your connection."
+              onRetry={() => setReloadKey((k) => k + 1)}
+            />
+          )}
+          {!loading && !loadFailed && products.length === 0 && (
             <p className="py-16 text-center text-sm text-stone-400">No items here yet.</p>
           )}
-          {products.map((product) => (
+          {!loadFailed && products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>

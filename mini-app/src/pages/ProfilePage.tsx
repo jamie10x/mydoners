@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/authStore";
 import { useUiStore } from "../store/uiStore";
 import { useSavedAddresses } from "../hooks/useSavedAddresses";
 import type { Coords } from "../components/MapPicker";
+import { normalizeUzPhone } from "../lib/phone";
 
 // See CheckoutPage.tsx — same code-splitting reasoning (MapLibre GL JS is
 // ~330KB gzipped, no reason to ship it on every screen that isn't the map).
@@ -27,6 +28,8 @@ export function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [addingAddress, setAddingAddress] = useState(false);
+  // Two-tap delete: first tap arms "Confirm?", second tap actually removes.
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<number | null>(null);
   const [newLabel, setNewLabel] = useState("");
   const [newLandmark, setNewLandmark] = useState("");
   const [newCoords, setNewCoords] = useState<Coords | null>(null);
@@ -34,8 +37,11 @@ export function ProfilePage() {
 
   if (!user) return null;
 
+  const normalizedPhone = phoneNumber.trim() ? normalizeUzPhone(phoneNumber) : undefined;
+  const phoneInvalid = phoneNumber.trim().length > 0 && normalizedPhone === null;
+
   async function saveProfile() {
-    if (!user) return;
+    if (!user || phoneInvalid) return;
     setSavingProfile(true);
     setError(null);
     setProfileSaved(false);
@@ -43,7 +49,7 @@ export function ProfilePage() {
       const res = await api.put<{ user: PublicUser }>(`/users/${user.telegramId}/profile`, {
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
-        phoneNumber: phoneNumber.trim() || undefined,
+        phoneNumber: normalizedPhone ?? undefined,
       });
       updateUser(res.user);
       setProfileSaved(true);
@@ -121,11 +127,18 @@ export function ProfilePage() {
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="+998 90 123 45 67"
               inputMode="tel"
-              className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+              className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand ${
+                phoneInvalid ? "border-red-300" : "border-stone-200"
+              }`}
             />
+            {phoneInvalid && (
+              <p className="text-xs font-medium text-red-600">
+                Enter a valid Uzbek number — e.g. +998 90 123 45 67
+              </p>
+            )}
             <button
               onClick={saveProfile}
-              disabled={savingProfile}
+              disabled={savingProfile || phoneInvalid}
               className="rounded-xl bg-stone-900 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
             >
               {savingProfile ? "Saving…" : "Save changes"}
@@ -141,7 +154,18 @@ export function ProfilePage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            {savedAddresses.addresses.map((address) => (
+            {savedAddresses.loading && (
+              <div className="h-14 animate-pulse rounded-xl bg-stone-200/60" />
+            )}
+            {!savedAddresses.loading && savedAddresses.loadFailed && (
+              <button
+                onClick={savedAddresses.reload}
+                className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm font-semibold text-stone-500"
+              >
+                Couldn't load your addresses — tap to retry
+              </button>
+            )}
+            {!savedAddresses.loading && savedAddresses.addresses.map((address) => (
               <div
                 key={address.id}
                 className="flex items-center gap-2.5 rounded-xl border border-stone-200 bg-white px-3 py-2.5"
@@ -153,12 +177,26 @@ export function ProfilePage() {
                   <p className="truncate text-sm font-bold text-stone-900">{address.label}</p>
                   <p className="truncate text-xs text-stone-400">{address.landmarkAddress}</p>
                 </div>
-                <button
-                  onClick={() => savedAddresses.remove(address.id)}
-                  className="shrink-0 text-xs font-semibold text-red-600"
-                >
-                  Remove
-                </button>
+                {confirmingRemoveId === address.id ? (
+                  <button
+                    onClick={() => {
+                      setConfirmingRemoveId(null);
+                      savedAddresses.remove(address.id).catch(() => setError("Couldn't remove that address — try again."));
+                    }}
+                    onBlur={() => setConfirmingRemoveId(null)}
+                    className="shrink-0 rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white"
+                  >
+                    Confirm?
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setConfirmingRemoveId(address.id)}
+                    className="shrink-0 text-xs font-semibold text-red-600"
+                    aria-label={`Remove address ${address.label}`}
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             ))}
 

@@ -3,6 +3,7 @@ import type { Order, OrderStatus } from "@mydoners/shared-contracts";
 import { api, ApiError } from "../api/client";
 import { useUiStore } from "../store/uiStore";
 import { useRealtimeOrder } from "../hooks/useRealtimeOrder";
+import { ErrorState } from "../components/ErrorState";
 import { formatSom } from "../lib/format";
 
 const STAGES: Array<{ label: string; statuses: OrderStatus[] }> = [
@@ -90,18 +91,52 @@ export function OrderTrackingPage() {
   const activeOrderId = useUiStore((s) => s.activeOrderId);
   const goTo = useUiStore((s) => s.goTo);
   const [order, setOrder] = useState<Order | null>(null);
+  const [loadState, setLoadState] = useState<"loading" | "loaded" | "not-found" | "error">("loading");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!activeOrderId) return;
-    api.get<Order>(`/orders/${activeOrderId}`).then(setOrder);
-  }, [activeOrderId]);
+    setLoadState("loading");
+    api
+      .get<Order>(`/orders/${activeOrderId}`)
+      .then((o) => {
+        setOrder(o);
+        setLoadState("loaded");
+      })
+      .catch((err) => {
+        // Only a definitive 404 means the order is gone — anything else
+        // (offline, 5xx) is retryable and must not read as "no order".
+        setLoadState(err instanceof ApiError && err.status === 404 ? "not-found" : "error");
+      });
+  }, [activeOrderId, reloadKey]);
 
   const liveStatus = useRealtimeOrder(activeOrderId, order?.status ?? "PENDING");
 
-  if (!activeOrderId || !order) {
+  if (!activeOrderId || loadState === "not-found") {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto">
         <p className="py-16 text-center text-sm font-medium text-stone-400">No active order.</p>
+      </div>
+    );
+  }
+
+  if (loadState === "error") {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <ErrorState
+          message="Couldn't load your order — check your connection."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        />
+      </div>
+    );
+  }
+
+  if (loadState === "loading" || !order) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-6">
+        <div className="h-12 w-40 animate-pulse rounded-xl bg-stone-200/60" />
+        <div className="h-56 animate-pulse rounded-2xl bg-stone-200/60" />
+        <div className="h-32 animate-pulse rounded-2xl bg-stone-200/60" />
       </div>
     );
   }
