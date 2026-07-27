@@ -18,6 +18,9 @@ export const createOrderSchema = z.object({
   courierNotes: z.string().nullable().optional(),
   customerName: z.string().min(1),
   customerPhone: z.string().min(5),
+  // Client-generated UUID — makes retried submissions return the existing
+  // order instead of creating a duplicate. Optional for older clients.
+  idempotencyKey: z.string().min(8).max(64).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

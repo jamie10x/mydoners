@@ -66,7 +66,7 @@ export function registerCallbackHandlers(bot: Bot) {
     pending.awaitingPhoto = false;
 
     if (pending.awaitingCashCode) {
-      await ctx.reply(`💵 Endi mijoz aytgan 2 xonali tasdiqlash kodini kiriting.`);
+      await ctx.reply(`💵 Endi mijoz aytgan 4 xonali tasdiqlash kodini kiriting.`);
     } else {
       await submitDelivery(ctx, orderId, pending, null);
     }

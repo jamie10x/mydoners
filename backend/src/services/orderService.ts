@@ -8,19 +8,13 @@ import { realtime } from "../ws/socket";
 import type { CreateOrderInput } from "../dto/order.dto";
 import type { orders } from "../db/schema";
 import { scoreOrderRisk } from "./riskService";
+import { ALLOWED_TRANSITIONS, actorMayTransition } from "../domain/orderTransitions";
+import type { Actor } from "../middleware/auth";
+import { ForbiddenError } from "../errors/AppError";
+import { redis } from "../core/redis";
 import { paymentService } from "./paymentService";
 import { orderNotificationService } from "./orderNotificationService";
 import type { RiskAssessment } from "@mydoners/shared-contracts";
-
-const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  PENDING: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["COOKING", "CANCELLED"],
-  COOKING: ["READY_FOR_DELIVERY", "CANCELLED"],
-  READY_FOR_DELIVERY: ["ON_THE_WAY", "CANCELLED"],
-  ON_THE_WAY: ["DELIVERED"],
-  DELIVERED: [],
-  CANCELLED: [],
-};
 
 type OrderRow = typeof orders.$inferSelect;
 interface OrderItemRow {
@@ -64,8 +58,15 @@ function toApiOrder(order: OrderRow, items: OrderItemRow[]): Order {
 }
 
 function generateCashConfirmationCode(): string {
-  return String(randomInt(0, 100)).padStart(2, "0");
+  // 4 digits: 1-in-10,000 guess space, paired with the attempt limit in
+  // confirmDelivery (previously 2 digits = 1-in-100, no limit).
+  return String(randomInt(0, 10_000)).padStart(4, "0");
 }
+
+// Cash-code guesses per order before delivery confirmation locks out —
+// generous for honest typos, useless for brute force against 10k codes.
+const MAX_CASH_CODE_ATTEMPTS = 5;
+const cashCodeAttemptsKey = (orderId: number) => `cashcode:attempts:${orderId}`;
 
 type UserRow = Awaited<ReturnType<typeof userRepository.findByTelegramId>>;
 
@@ -88,6 +89,14 @@ function buildCourierData(order: OrderRow, user: UserRow): CourierAssignedData {
 
 export const orderService = {
   async createOrder(telegramId: number, input: CreateOrderInput): Promise<Order> {
+    // Fast path for a retried submission: the first attempt already created
+    // the order, return it as-is. The unique constraint below closes the
+    // remaining race between two truly concurrent submits.
+    if (input.idempotencyKey) {
+      const existing = await orderRepository.findByIdempotencyKey(input.idempotencyKey);
+      if (existing) return this.getOrder(existing.id);
+    }
+
     const resolvedItems: NewOrderItemInput[] = [];
     let totalAmount = 0;
 
@@ -153,20 +162,32 @@ export const orderService = {
     // kitchen either way. OTP / verbal confirmation (KDS badge) are
     // verification signals layered on top, not a gate on cooking start;
     // see docs/decisions.md's Phase 2 notes for why.
-    const orderId = await orderRepository.create({
-      userId: telegramId,
-      status: "CONFIRMED",
-      totalAmount,
-      paymentType: input.paymentType,
-      latitude: input.latitude,
-      longitude: input.longitude,
-      landmarkAddress: input.landmarkAddress,
-      courierNotes: input.courierNotes ?? null,
-      riskLevel,
-      customerName: input.customerName,
-      customerPhone: input.customerPhone,
-      items: resolvedItems,
-    });
+    let orderId: number;
+    try {
+      orderId = await orderRepository.create({
+        userId: telegramId,
+        status: "CONFIRMED",
+        totalAmount,
+        paymentType: input.paymentType,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        landmarkAddress: input.landmarkAddress,
+        courierNotes: input.courierNotes ?? null,
+        riskLevel,
+        customerName: input.customerName,
+        customerPhone: input.customerPhone,
+        idempotencyKey: input.idempotencyKey ?? null,
+        items: resolvedItems,
+      });
+    } catch (err) {
+      // Unique violation on idempotency_key: a concurrent duplicate of the
+      // same submission won the insert — return that order.
+      if (input.idempotencyKey && err instanceof Error && err.message.includes("idempotency")) {
+        const winner = await orderRepository.findByIdempotencyKey(input.idempotencyKey);
+        if (winner) return this.getOrder(winner.id);
+      }
+      throw err;
+    }
 
     if (input.paymentType === "CLICK" || input.paymentType === "PAYME") {
       // Stub provider — see paymentService.ts. Simulates instant success so
@@ -226,6 +247,15 @@ export const orderService = {
     return toApiOrder(result.order, result.items);
   },
 
+  // 404, not 403, for someone else's order — a Forbidden response would
+  // confirm the guessed id exists.
+  async assertOwnedBy(orderId: number, telegramId: number): Promise<void> {
+    const result = await orderRepository.findById(orderId);
+    if (!result || result.order.userId !== telegramId) {
+      throw new NotFoundError(`Order ${orderId} not found`);
+    }
+  },
+
   // Backs GET /orders/:orderId/risk. Recomputes from the customer's current
   // stats rather than persisting the original reason/action — riskLevel
   // itself is frozen at order-creation time (see createOrder), but the
@@ -282,7 +312,7 @@ export const orderService = {
     await orderRepository.markCourierNotified(orderId);
   },
 
-  async updateStatus(orderId: number, newStatus: OrderStatus, changedBy: ChangedBy): Promise<Order> {
+  async updateStatus(orderId: number, newStatus: OrderStatus, changedBy: ChangedBy, actor?: Actor): Promise<Order> {
     const existing = await orderRepository.findById(orderId);
     if (!existing) throw new NotFoundError(`Order ${orderId} not found`);
 
@@ -292,6 +322,13 @@ export const orderService = {
         currentStatus,
         requestedStatus: newStatus,
       });
+    }
+
+    // Who may perform which transition — see domain/orderTransitions.ts.
+    // `actor` is undefined only for trusted internal calls (e.g. payment
+    // webhooks), never for HTTP requests.
+    if (actor && !actorMayTransition(actor, currentStatus, newStatus, existing.order.userId)) {
+      throw new ForbiddenError(`This caller may not transition an order from ${currentStatus} to ${newStatus}`);
     }
 
     if (
@@ -304,6 +341,14 @@ export const orderService = {
 
     const result = await orderRepository.updateStatus(orderId, newStatus, changedBy);
     if (!result) throw new NotFoundError(`Order ${orderId} not found`);
+    if ("conflict" in result) {
+      // Lost a race: another caller moved the order between our unlocked
+      // pre-check above and the locked write.
+      throw new ConflictError(`Cannot transition order from ${result.conflict} to ${newStatus}`, {
+        currentStatus: result.conflict,
+        requestedStatus: newStatus,
+      });
+    }
 
     const userId = existing.order.userId!;
 
@@ -345,16 +390,44 @@ export const orderService = {
   // generated when the order left the kitchen; mismatches are rejected so a
   // courier can't mark cash as collected without the customer's confirmation.
   async confirmDelivery(orderId: number, photoUrl: string, submittedCashCode: string | null): Promise<Order> {
-    const existing = await orderRepository.findById(orderId);
-    if (!existing) throw new NotFoundError(`Order ${orderId} not found`);
-
-    if (existing.order.paymentType === "CASH" && existing.order.paymentStatus === "UNPAID") {
-      if (!submittedCashCode || submittedCashCode !== existing.order.cashConfirmationCode) {
-        throw new ValidationError("Cash confirmation code does not match", { orderId });
-      }
+    const attemptsKey = cashCodeAttemptsKey(orderId);
+    const attempts = Number((await redis.get(attemptsKey)) ?? 0);
+    if (attempts >= MAX_CASH_CODE_ATTEMPTS) {
+      throw new ValidationError("Too many cash-code attempts — call the restaurant to confirm this delivery", {
+        orderId,
+      });
     }
 
-    await orderRepository.setDeliveryProof(orderId, photoUrl);
-    return this.updateStatus(orderId, "DELIVERED", "COURIER");
+    const result = await orderRepository.confirmDelivery(orderId, photoUrl, submittedCashCode);
+
+    if ("error" in result) {
+      if (result.error === "NOT_FOUND") throw new NotFoundError(`Order ${orderId} not found`);
+      if (result.error === "BAD_STATUS") {
+        throw new ConflictError(`Cannot transition order from ${result.currentStatus} to DELIVERED`, {
+          currentStatus: result.currentStatus,
+          requestedStatus: "DELIVERED",
+        });
+      }
+      // BAD_CODE — count the failed guess, expire the counter with the order's relevance window.
+      await redis.multi().incr(attemptsKey).expire(attemptsKey, 86_400).exec();
+      throw new ValidationError("Cash confirmation code does not match", { orderId });
+    }
+
+    const userId = result.order.userId!;
+    await userRepository.incrementCompletedOrders(userId);
+    realtime.orderStatusChanged(orderId, userId, {
+      status: "DELIVERED",
+      previousStatus: result.previousStatus,
+      changedBy: "COURIER",
+    });
+    realtime.deliveryConfirmed(orderId, userId, {
+      deliveredAt: new Date().toISOString(),
+      proofPhotoUrl: photoUrl,
+    });
+    orderNotificationService
+      .notifyStatusChange(userId, toApiOrder(result.order, []), "DELIVERED")
+      .catch((err) => console.error(`Failed to send delivered notification for order ${orderId}:`, err));
+
+    return this.getOrder(orderId);
   },
 };

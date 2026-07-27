@@ -18,6 +18,10 @@ interface CheckoutDraftState {
   // checking for it on reopen instead of the customer needing to press
   // "Share via Telegram instead" all over again.
   awaitingTelegramLocation: boolean;
+  // One UUID per checkout attempt, persisted so a retry after a timeout (or
+  // an app reopen mid-submit) reuses the same key and the backend returns
+  // the already-created order instead of a duplicate. Cleared by reset().
+  idempotencyKey: string | null;
   savedAt: number;
   setCustomerName: (value: string) => void;
   setCustomerPhone: (value: string) => void;
@@ -25,6 +29,7 @@ interface CheckoutDraftState {
   setCourierNotes: (value: string) => void;
   setPaymentType: (value: PaymentType) => void;
   setAwaitingTelegramLocation: (value: boolean) => void;
+  ensureIdempotencyKey: () => string;
   reset: () => void;
 }
 
@@ -35,11 +40,12 @@ const initialDraft = {
   courierNotes: "",
   paymentType: "CASH" as PaymentType,
   awaitingTelegramLocation: false,
+  idempotencyKey: null as string | null,
 };
 
 export const useCheckoutStore = create<CheckoutDraftState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialDraft,
       savedAt: Date.now(),
       setCustomerName: (value) => set({ customerName: value, savedAt: Date.now() }),
@@ -48,6 +54,13 @@ export const useCheckoutStore = create<CheckoutDraftState>()(
       setCourierNotes: (value) => set({ courierNotes: value, savedAt: Date.now() }),
       setPaymentType: (value) => set({ paymentType: value, savedAt: Date.now() }),
       setAwaitingTelegramLocation: (value) => set({ awaitingTelegramLocation: value, savedAt: Date.now() }),
+      ensureIdempotencyKey: () => {
+        const current = get().idempotencyKey;
+        if (current) return current;
+        const key = crypto.randomUUID();
+        set({ idempotencyKey: key, savedAt: Date.now() });
+        return key;
+      },
       reset: () => set({ ...initialDraft, savedAt: Date.now() }),
     }),
     {

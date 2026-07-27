@@ -66,7 +66,9 @@ export function signSessionToken(telegramId: number): string {
 export type Actor =
   | { type: "user"; telegramId: number }
   | { type: "device"; deviceId: number; label: string }
-  | { type: "bot" };
+  // Which bot matters for authorization: only the courier bot may move
+  // orders through the delivery steps (see domain/orderTransitions.ts).
+  | { type: "bot"; bot: "courier" | "customer" };
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -91,11 +93,13 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   }
   const token = header.slice("Bearer ".length);
 
-  if (
-    (env.courierBotApiKey && token === env.courierBotApiKey) ||
-    (env.customerBotApiKey && token === env.customerBotApiKey)
-  ) {
-    req.actor = { type: "bot" };
+  if (env.courierBotApiKey && token === env.courierBotApiKey) {
+    req.actor = { type: "bot", bot: "courier" };
+    next();
+    return;
+  }
+  if (env.customerBotApiKey && token === env.customerBotApiKey) {
+    req.actor = { type: "bot", bot: "customer" };
     next();
     return;
   }

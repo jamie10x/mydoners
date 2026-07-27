@@ -84,13 +84,17 @@ export const orders = pgTable("orders", {
   // Phase 2 — courier delivery-proof flow. Code is generated when an order
   // becomes READY_FOR_DELIVERY for CASH orders; courier must have the
   // customer read it back on arrival before cash collection is confirmed.
-  cashConfirmationCode: varchar("cash_confirmation_code", { length: 2 }),
+  cashConfirmationCode: varchar("cash_confirmation_code", { length: 4 }),
   deliveryProofPhotoUrl: text("delivery_proof_photo_url"),
   // When the courier bot successfully sent the dispatch card for this order.
   // NULL on a READY_FOR_DELIVERY order means the courier hasn't been told
   // yet — the bot's backfill loop uses this to re-deliver dispatches that
   // were lost while it was down (the WS event is only the fast path).
   courierNotifiedAt: timestamp("courier_notified_at", { withTimezone: true }),
+  // Client-generated UUID sent with POST /orders. The unique constraint is
+  // what makes a double-submit (retry after timeout, double-tap) return the
+  // already-created order instead of charging the customer twice.
+  idempotencyKey: varchar("idempotency_key", { length: 64 }).unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

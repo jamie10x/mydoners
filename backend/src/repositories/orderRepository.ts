@@ -2,6 +2,7 @@ import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { orderItems, orderLogs, orders, products } from "../db/schema";
 import type { ChangedBy, OrderStatus, PaymentType, RiskLevel } from "@mydoners/shared-contracts";
+import { ALLOWED_TRANSITIONS } from "../domain/orderTransitions";
 
 export interface NewOrderItemInput {
   productId: number;
@@ -28,6 +29,7 @@ export interface NewOrderInput {
   riskLevel: RiskLevel;
   customerName: string;
   customerPhone: string;
+  idempotencyKey: string | null;
   items: NewOrderItemInput[];
 }
 
@@ -49,6 +51,7 @@ export const orderRepository = {
           riskLevel: input.riskLevel,
           customerName: input.customerName,
           customerPhone: input.customerPhone,
+          idempotencyKey: input.idempotencyKey,
         })
         .returning();
 
@@ -143,14 +146,29 @@ export const orderRepository = {
     await db.update(orders).set({ deliveryProofPhotoUrl: photoUrl }).where(eq(orders.id, id));
   },
 
+  async findByIdempotencyKey(key: string) {
+    const [order] = await db.select().from(orders).where(eq(orders.idempotencyKey, key));
+    return order ?? null;
+  },
+
   async markCourierNotified(id: number) {
     await db.update(orders).set({ courierNotifiedAt: new Date() }).where(eq(orders.id, id));
   },
 
+  // The row lock (FOR UPDATE) + re-validation inside the transaction is
+  // what makes concurrent transitions safe: two racing requests serialize
+  // on the lock, and the loser re-reads a status its transition is no
+  // longer valid from, getting a clean "conflict" instead of silently
+  // clobbering the winner (previously: unlocked read-then-write).
   async updateStatus(id: number, newStatus: OrderStatus, changedBy: ChangedBy) {
     return db.transaction(async (tx) => {
-      const [current] = await tx.select().from(orders).where(eq(orders.id, id));
+      const [current] = await tx.select().from(orders).where(eq(orders.id, id)).for("update");
       if (!current) return null;
+
+      const currentStatus = current.status as OrderStatus;
+      if (!ALLOWED_TRANSITIONS[currentStatus].includes(newStatus)) {
+        return { conflict: currentStatus as OrderStatus };
+      }
 
       const [updated] = await tx
         .update(orders)
@@ -165,7 +183,46 @@ export const orderRepository = {
         changedBy,
       });
 
-      return { order: updated!, previousStatus: current.status };
+      return { order: updated!, previousStatus: currentStatus };
+    });
+  },
+
+  /**
+   * Delivery proof + the DELIVERED transition in ONE transaction, with the
+   * cash-code check under the same row lock. Previously the proof was
+   * persisted first and the transition could still fail, stranding orders
+   * with a photo but the wrong status.
+   */
+  async confirmDelivery(id: number, photoUrl: string, submittedCashCode: string | null) {
+    return db.transaction(async (tx) => {
+      const [current] = await tx.select().from(orders).where(eq(orders.id, id)).for("update");
+      if (!current) return { error: "NOT_FOUND" as const };
+
+      const currentStatus = current.status as OrderStatus;
+      if (!ALLOWED_TRANSITIONS[currentStatus].includes("DELIVERED")) {
+        return { error: "BAD_STATUS" as const, currentStatus };
+      }
+
+      if (current.paymentType === "CASH" && current.paymentStatus === "UNPAID") {
+        if (!submittedCashCode || submittedCashCode !== current.cashConfirmationCode) {
+          return { error: "BAD_CODE" as const };
+        }
+      }
+
+      const [updated] = await tx
+        .update(orders)
+        .set({ status: "DELIVERED", deliveryProofPhotoUrl: photoUrl, updatedAt: new Date() })
+        .where(eq(orders.id, id))
+        .returning();
+
+      await tx.insert(orderLogs).values({
+        orderId: id,
+        previousStatus: currentStatus,
+        newStatus: "DELIVERED",
+        changedBy: "COURIER",
+      });
+
+      return { order: updated!, previousStatus: currentStatus };
     });
   },
 };

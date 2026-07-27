@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type { OrderStatus } from "@mydoners/shared-contracts";
 import { orderService } from "../services/orderService";
+import { changedByFor } from "../domain/orderTransitions";
 import { otpService } from "../services/otpService";
 import { createOrderSchema, updateOrderStatusSchema, verifyOtpSchema } from "../dto/order.dto";
 import { ForbiddenError, ValidationError } from "../errors/AppError";
@@ -17,8 +18,19 @@ const VALID_STATUSES: OrderStatus[] = [
 ];
 const DEFAULT_ACTIVE_STATUSES: OrderStatus[] = ["CONFIRMED", "COOKING", "READY_FOR_DELIVERY"];
 
+function requireCourierBot(req: Request): void {
+  if (!(req.actor?.type === "bot" && req.actor.bot === "courier")) {
+    throw new ForbiddenError("Courier bot only");
+  }
+}
+
 export const orderController = {
   async list(req: Request, res: Response) {
+    // Staff surfaces only (KDS device key, bots) — a customer JWT listing
+    // every active order would leak other customers' names/addresses.
+    if (req.actor?.type === "user") {
+      throw new ForbiddenError("Customers can only fetch their own orders by id");
+    }
     const statusParam = req.query.status;
     const requested = typeof statusParam === "string" ? statusParam.split(",") : null;
     const statuses = requested
@@ -33,11 +45,13 @@ export const orderController = {
   },
 
   // Courier bot's recovery loop — see orderService.getCourierQueue.
-  async courierQueue(_req: Request, res: Response) {
+  async courierQueue(req: Request, res: Response) {
+    requireCourierBot(req);
     res.json(await orderService.getCourierQueue());
   },
 
   async markCourierNotified(req: Request, res: Response) {
+    requireCourierBot(req);
     await orderService.markCourierNotified(Number(req.params.orderId));
     res.status(204).end();
   },
@@ -55,6 +69,10 @@ export const orderController = {
 
   async get(req: Request, res: Response) {
     const orderId = Number(req.params.orderId);
+    // Customers see only their own orders; staff tokens see any.
+    if (req.actor?.type === "user") {
+      await orderService.assertOwnedBy(orderId, req.actor.telegramId);
+    }
     res.json(await orderService.getOrder(orderId));
   },
 
@@ -63,13 +81,11 @@ export const orderController = {
     const parsed = updateOrderStatusSchema.safeParse(req.body);
     if (!parsed.success) throw new ValidationError("Invalid status update payload", { issues: parsed.error.issues });
 
-    const order = await orderService.updateStatus(orderId, parsed.data.status, parsed.data.changedBy);
-    res.json(order);
-  },
-
-  async dispatch(req: Request, res: Response) {
-    const orderId = Number(req.params.orderId);
-    const order = await orderService.updateStatus(orderId, "READY_FOR_DELIVERY", "KITCHEN");
+    // changedBy is derived from the authenticated token, not the request
+    // body — the body field is kept for backwards compatibility but a
+    // courier can no longer write "KITCHEN" into the audit log.
+    const actor = req.actor!;
+    const order = await orderService.updateStatus(orderId, parsed.data.status, changedByFor(actor), actor);
     res.json(order);
   },
 
@@ -95,6 +111,7 @@ export const orderController = {
   },
 
   async deliveryProof(req: Request, res: Response) {
+    requireCourierBot(req);
     const orderId = Number(req.params.orderId);
     const file = req.file;
     if (!file) throw new ValidationError("Delivery-proof photo is required");

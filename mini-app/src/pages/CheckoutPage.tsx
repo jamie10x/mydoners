@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { Order, PaymentType } from "@mydoners/shared-contracts";
-import { api, ApiError } from "../api/client";
+import { api, ApiError, isNetworkError } from "../api/client";
 import { useCartStore } from "../store/cartStore";
 import { useUiStore } from "../store/uiStore";
 import { useAuthStore } from "../store/authStore";
@@ -140,7 +140,7 @@ export function CheckoutPage() {
     setError(null);
     setCodBlocked(false);
     try {
-      const order = await api.post<Order>("/orders", {
+      const payload = {
         items: lines.map((line) => ({
           productId: line.product.id,
           selectedVariant: line.selectedVariant,
@@ -153,7 +153,21 @@ export function CheckoutPage() {
         courierNotes: courierNotes.trim() || null,
         customerName: customerName.trim(),
         customerPhone: normalizedPhone,
-      });
+        // Same key across retries of this checkout — the backend returns
+        // the already-created order instead of making a duplicate.
+        idempotencyKey: useCheckoutStore.getState().ensureIdempotencyKey(),
+      };
+
+      let order: Order;
+      try {
+        order = await api.post<Order>("/orders", payload);
+      } catch (err) {
+        // Safe to retry exactly because of the idempotency key: if the
+        // first attempt actually reached the server, we get that order back.
+        if (!isNetworkError(err)) throw err;
+        await new Promise((r) => setTimeout(r, 800));
+        order = await api.post<Order>("/orders", payload);
+      }
       clearCart();
       useCheckoutStore.getState().reset();
       // Brief success moment first — the jump to tracking otherwise feels
