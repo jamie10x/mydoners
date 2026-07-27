@@ -4,9 +4,11 @@ import { api, ApiError } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { useUiStore } from "../store/uiStore";
 import { useSavedAddresses } from "../hooks/useSavedAddresses";
+import { useOrderHistory } from "../hooks/useOrderHistory";
 import type { Coords } from "../components/MapPicker";
 import { normalizeUzPhone } from "../lib/phone";
-import { t } from "../i18n/strings";
+import { formatOrderDate, formatSom } from "../lib/format";
+import { t, orderStatusLabel } from "../i18n/strings";
 
 // See CheckoutPage.tsx — same code-splitting reasoning (MapLibre GL JS is
 // ~330KB gzipped, no reason to ship it on every screen that isn't the map).
@@ -20,6 +22,8 @@ export function ProfilePage() {
   const updateUser = useAuthStore((s) => s.updateUser);
   const goTo = useUiStore((s) => s.goTo);
   const savedAddresses = useSavedAddresses(user?.telegramId);
+  const orderHistory = useOrderHistory(user?.telegramId);
+  const setActiveOrder = useUiStore((s) => s.setActiveOrder);
 
   const [firstName, setFirstName] = useState(user?.firstName ?? "");
   const [lastName, setLastName] = useState(user?.lastName ?? "");
@@ -85,6 +89,7 @@ export function ProfilePage() {
       <header className="flex items-center gap-3 px-4 pt-5">
         <button
           onClick={() => goTo("menu")}
+          aria-label={t("navMenu")}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-200/70 text-stone-700"
         >
           ←
@@ -110,24 +115,37 @@ export function ProfilePage() {
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("yourDetails")}</h2>
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
+              <label htmlFor="profile-first-name" className="sr-only">
+                {t("firstNamePlaceholder")}
+              </label>
               <input
+                id="profile-first-name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder={t("firstNamePlaceholder")}
                 className="w-full min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
               />
+              <label htmlFor="profile-last-name" className="sr-only">
+                {t("lastNamePlaceholder")}
+              </label>
               <input
+                id="profile-last-name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder={t("lastNamePlaceholder")}
                 className="w-full min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
               />
             </div>
+            <label htmlFor="profile-phone" className="sr-only">
+              {t("phoneFieldLabel")}
+            </label>
             <input
+              id="profile-phone"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="+998 90 123 45 67"
               inputMode="tel"
+              aria-invalid={phoneInvalid}
               className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand ${
                 phoneInvalid ? "border-red-300" : "border-stone-200"
               }`}
@@ -207,13 +225,21 @@ export function ProfilePage() {
                   <Suspense fallback={<MapPickerFallback />}>
                     <MapPicker coords={newCoords} onChange={setNewCoords} />
                   </Suspense>
+                  <label htmlFor="new-address-label" className="sr-only">
+                    {t("addressLabelExample")}
+                  </label>
                   <input
+                    id="new-address-label"
                     value={newLabel}
                     onChange={(e) => setNewLabel(e.target.value)}
                     placeholder={t("addressLabelExample")}
                     className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
                   />
+                  <label htmlFor="new-address-landmark" className="sr-only">
+                    {t("landmarkTitle")}
+                  </label>
                   <textarea
+                    id="new-address-landmark"
                     value={newLandmark}
                     onChange={(e) => setNewLandmark(e.target.value)}
                     placeholder={t("landmarkTitle")}
@@ -242,6 +268,56 @@ export function ProfilePage() {
                   className="rounded-xl border border-dashed border-stone-300 py-2.5 text-sm font-semibold text-stone-500"
                 >
                   {t("addAddress")}
+                </button>
+              ))}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("orderHistory")}</h2>
+          <div className="flex flex-col gap-2">
+            {orderHistory.loading && (
+              <>
+                <div className="h-16 animate-pulse rounded-xl bg-stone-200/60" />
+                <div className="h-16 animate-pulse rounded-xl bg-stone-200/60" />
+              </>
+            )}
+            {!orderHistory.loading && orderHistory.loadFailed && (
+              <button
+                onClick={orderHistory.reload}
+                className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm font-semibold text-stone-500"
+              >
+                {t("orderHistoryLoadFailed")}
+              </button>
+            )}
+            {!orderHistory.loading && !orderHistory.loadFailed && orderHistory.orders.length === 0 && (
+              <p className="py-2 text-sm text-stone-400">{t("orderHistoryEmpty")}</p>
+            )}
+            {!orderHistory.loading &&
+              orderHistory.orders.map((order) => (
+                <button
+                  key={order.id}
+                  onClick={() => setActiveOrder(order.id)}
+                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-3.5 py-3 text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-stone-900">{t("orderNumber", { id: order.id })}</p>
+                    <p className="text-xs text-stone-400">{formatOrderDate(order.createdAt)}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-bold text-stone-900">{formatSom(order.totalAmount)}</p>
+                    <p
+                      className={`text-xs font-semibold ${
+                        order.status === "CANCELLED"
+                          ? "text-red-500"
+                          : order.status === "DELIVERED"
+                            ? "text-green-600"
+                            : "text-brand"
+                      }`}
+                    >
+                      {orderStatusLabel(order.status)}
+                    </p>
+                  </div>
                 </button>
               ))}
           </div>

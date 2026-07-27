@@ -4,6 +4,7 @@ import { useCartStore } from "../store/cartStore";
 import { VariantModal } from "./VariantModal";
 import { ProductThumbnail } from "./ProductThumbnail";
 import { formatSom } from "../lib/format";
+import { hapticTap } from "../lib/haptics";
 import { t } from "../i18n/strings";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -20,6 +21,7 @@ export function ProductCard({ product }: { product: Product }) {
       return;
     }
     addItem(product, null);
+    hapticTap();
   }
 
   return (
@@ -42,6 +44,7 @@ export function ProductCard({ product }: { product: Product }) {
           product={product}
           onSelect={(variant) => {
             addItem(product, variant);
+            hapticTap();
             setShowVariantModal(false);
           }}
           onClose={() => setShowVariantModal(false)}

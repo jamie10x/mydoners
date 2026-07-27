@@ -7,12 +7,11 @@ import { persist } from "zustand/middleware";
 export type Screen = "menu" | "cart" | "checkout" | "tracking" | "profile";
 
 interface UiState {
+  // Persisted, so reopening the app restores wherever the customer left off
+  // (mid-checkout, browsing the cart, etc.) instead of always resetting to
+  // the menu. useResumeActiveOrder still takes priority over this on load —
+  // an active, undelivered order always wins and jumps to "tracking".
   screen: Screen;
-  // Persisted (screen itself isn't — see useResumeActiveOrder, which decides
-  // on app load whether to jump straight to "tracking" after checking the
-  // order isn't already finished). Without this, closing the Mini App right
-  // after placing an order and reopening it lands back on the menu with no
-  // way back to the order you just placed.
   activeOrderId: number | null;
   goTo: (screen: Screen) => void;
   setActiveOrder: (orderId: number) => void;
@@ -30,7 +29,7 @@ export const useUiStore = create<UiState>()(
     }),
     {
       name: "mydoners-active-order",
-      partialize: (state) => ({ activeOrderId: state.activeOrderId }),
+      partialize: (state) => ({ activeOrderId: state.activeOrderId, screen: state.screen }),
     },
   ),
 );

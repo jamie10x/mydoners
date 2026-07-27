@@ -44,6 +44,13 @@ export const orderController = {
     res.json(await orderService.listByStatus(statuses));
   },
 
+  // Profile's order-history list — customers only, own orders only.
+  async mine(req: Request, res: Response) {
+    if (req.actor?.type !== "user") throw new ForbiddenError("Only Mini App customers have order history");
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    res.json(await orderService.listMine(req.actor.telegramId, limit));
+  },
+
   // Courier bot's recovery loop — see orderService.getCourierQueue.
   async courierQueue(req: Request, res: Response) {
     requireCourierBot(req);

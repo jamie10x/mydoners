@@ -36,6 +36,7 @@ export const STR = {
   checkoutTitle: "Buyurtmani rasmiylashtirish",
   yourDetails: "Ma'lumotlaringiz",
   fullNamePlaceholder: "Ism familiya",
+  phoneFieldLabel: "Telefon raqami",
   phoneInvalid: "To'g'ri raqam kiriting — masalan, +998 90 123 45 67",
   deliveryLocation: "Yetkazib berish manzili",
   landmarkTitle: "Mo'ljal / xonadon",
@@ -64,6 +65,12 @@ export const STR = {
   sharePhonePrompt: "Naqd to'lovni tasdiqlashni tezlashtirish uchun Telegram kontaktingizni ulashing.",
   sharePhone: "📱 Telefon raqamni ulashish",
   waitingTelegram: "Telegram kutilmoqda…",
+
+  // Bottom nav
+  navMenu: "Menyu",
+  navCart: "Savat",
+  navOrder: "Buyurtma",
+  navProfile: "Profil",
 
   // Map picker
   dragPinHint: "✥ Belgini suring yoki xaritani bosing",
@@ -112,6 +119,25 @@ export const STR = {
   addAddress: "+ Manzil qo'shish",
   addressLabelExample: "Nomi — masalan: Uy, Ish",
   saveAddress: "Manzilni saqlash",
+
+  // Order history (Profile)
+  orderHistory: "Buyurtmalar tarixi",
+  orderHistoryEmpty: "Hali buyurtma yo'q.",
+  orderHistoryLoadFailed: "Tarix yuklanmadi — qayta urinish uchun bosing",
+  statusPending: "Qabul qilindi",
+  statusCooking: "Tayyorlanmoqda",
+  statusOnTheWay: "Yetkazilmoqda",
+  statusDelivered: "Yetkazildi",
+  statusCancelled: "Bekor qilindi",
+
+  // Delivered celebration
+  deliveredTitle: "Yetkazib berildi!",
+  deliveredSubtitle: "Yoqimli ishtaha! Buyurtmangizdan mamnun bo'lganingizni umid qilamiz.",
+  receiptTitle: "Chek",
+  receiptTotal: "Jami",
+  orderAgain: "Yana shu buyurtmani berish",
+  reordering: "Qo'shilmoqda…",
+  doneBackToMenu: "Menyuga qaytish",
 } as const;
 
 export type StringKey = keyof typeof STR;
@@ -134,4 +160,24 @@ export function variantLabel(variant: string): string {
   if (variant === "Beef") return STR.beef;
   if (variant === "Chicken") return STR.chicken;
   return variant;
+}
+
+/** Collapses the 7 backend statuses into the 5 labels shown in order history. */
+export function orderStatusLabel(status: string): string {
+  switch (status) {
+    case "PENDING":
+    case "CONFIRMED":
+      return STR.statusPending;
+    case "COOKING":
+      return STR.statusCooking;
+    case "READY_FOR_DELIVERY":
+    case "ON_THE_WAY":
+      return STR.statusOnTheWay;
+    case "DELIVERED":
+      return STR.statusDelivered;
+    case "CANCELLED":
+      return STR.statusCancelled;
+    default:
+      return status;
+  }
 }

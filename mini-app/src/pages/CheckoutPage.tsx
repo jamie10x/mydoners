@@ -11,6 +11,7 @@ import { useSavedAddresses } from "../hooks/useSavedAddresses";
 import type { Coords, GeoStatus } from "../components/MapPicker";
 import { formatSom } from "../lib/format";
 import { normalizeUzPhone } from "../lib/phone";
+import { hapticSuccess } from "../lib/haptics";
 import { t, variantLabel } from "../i18n/strings";
 
 // Keep in sync with customer-bot/src/business.ts — used when cash payment is
@@ -173,6 +174,7 @@ export function CheckoutPage() {
       // Brief success moment first — the jump to tracking otherwise feels
       // like the tap might not have registered.
       setPlacedOrderId(order.id);
+      hapticSuccess();
       setTimeout(() => setActiveOrder(order.id), 1800);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -209,6 +211,7 @@ export function CheckoutPage() {
         <header className="flex items-center gap-3 px-4 pt-5">
           <button
             onClick={() => goTo("cart")}
+            aria-label={t("navCart")}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-200/70 text-stone-700"
           >
             ←
@@ -220,17 +223,26 @@ export function CheckoutPage() {
           <section>
             <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("yourDetails")}</h2>
             <div className="flex flex-col gap-2">
+              <label htmlFor="checkout-name" className="sr-only">
+                {t("fullNamePlaceholder")}
+              </label>
               <input
+                id="checkout-name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder={t("fullNamePlaceholder")}
                 className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
               />
+              <label htmlFor="checkout-phone" className="sr-only">
+                {t("phoneFieldLabel")}
+              </label>
               <input
+                id="checkout-phone"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 placeholder="+998 90 123 45 67"
                 inputMode="tel"
+                aria-invalid={phoneInvalid}
                 className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand ${
                   phoneInvalid ? "border-red-300" : "border-stone-200"
                 }`}
@@ -276,7 +288,11 @@ export function CheckoutPage() {
                   </button>
                 ) : (
                   <div className="flex gap-2">
+                    <label htmlFor="checkout-address-label" className="sr-only">
+                      {t("addressLabelPlaceholder")}
+                    </label>
                     <input
+                      id="checkout-address-label"
                       value={savingLabel}
                       onChange={(e) => setSavingLabel(e.target.value)}
                       placeholder={t("addressLabelPlaceholder")}
@@ -341,8 +357,11 @@ export function CheckoutPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("landmarkTitle")}</h2>
+            <h2 id="checkout-landmark-heading" className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">
+              {t("landmarkTitle")}
+            </h2>
             <textarea
+              aria-labelledby="checkout-landmark-heading"
               value={landmarkAddress}
               onChange={(e) => setLandmarkAddress(e.target.value)}
               placeholder={t("landmarkPlaceholder")}
@@ -352,8 +371,11 @@ export function CheckoutPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("courierNotes")}</h2>
+            <h2 id="checkout-notes-heading" className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">
+              {t("courierNotes")}
+            </h2>
             <textarea
+              aria-labelledby="checkout-notes-heading"
               value={courierNotes}
               onChange={(e) => setCourierNotes(e.target.value)}
               rows={2}

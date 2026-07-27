@@ -247,6 +247,12 @@ export const orderService = {
     return toApiOrder(result.order, result.items);
   },
 
+  // Backs GET /orders/mine — Profile's order-history list.
+  async listMine(telegramId: number, limit: number): Promise<Order[]> {
+    const results = await orderRepository.listByUser(telegramId, limit);
+    return results.map(({ order, items }) => toApiOrder(order, items));
+  },
+
   // 404, not 403, for someone else's order — a Forbidden response would
   // confirm the guessed id exists.
   async assertOwnedBy(orderId: number, telegramId: number): Promise<void> {

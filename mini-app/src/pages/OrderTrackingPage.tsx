@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
-import type { Order, OrderStatus } from "@mydoners/shared-contracts";
+import { useEffect, useRef, useState } from "react";
+import type { Order, OrderStatus, Product } from "@mydoners/shared-contracts";
 import { api, ApiError } from "../api/client";
 import { useUiStore } from "../store/uiStore";
+import { useCartStore } from "../store/cartStore";
 import { useRealtimeOrder } from "../hooks/useRealtimeOrder";
 import { ErrorState } from "../components/ErrorState";
+import { Confetti } from "../components/Confetti";
+import { hapticSuccess } from "../lib/haptics";
 import { formatSom } from "../lib/format";
 import { t, variantLabel } from "../i18n/strings";
 
@@ -91,9 +94,24 @@ function OtpVerification({ orderId }: { orderId: number }) {
 export function OrderTrackingPage() {
   const activeOrderId = useUiStore((s) => s.activeOrderId);
   const goTo = useUiStore((s) => s.goTo);
+  const addItem = useCartStore((s) => s.addItem);
   const [order, setOrder] = useState<Order | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "loaded" | "not-found" | "error">("loading");
   const [reloadKey, setReloadKey] = useState(0);
+  const [reordering, setReordering] = useState(false);
+  // Only celebrate a DELIVERED status reached live during this visit —
+  // revisiting an already-delivered order from history (see ProfilePage's
+  // order history) must not replay the confetti every time.
+  const [celebrate, setCelebrate] = useState(false);
+  const prevStatusRef = useRef<OrderStatus | null>(null);
+  // useRealtimeOrder starts its internal state from "PENDING" (see its
+  // initialStatus param default below, used before `order` has loaded) and
+  // only catches up to the real status a render or two later. Without this
+  // guard, that catch-up itself reads as a "PENDING → DELIVERED" transition
+  // and fires the celebration on every plain history revisit. So: wait
+  // until liveStatus has actually caught up to the freshly-loaded order's
+  // real status once, and only treat CHANGES after that point as live.
+  const syncedRef = useRef(false);
 
   useEffect(() => {
     if (!activeOrderId) return;
@@ -112,6 +130,42 @@ export function OrderTrackingPage() {
   }, [activeOrderId, reloadKey]);
 
   const { status: liveStatus, connected } = useRealtimeOrder(activeOrderId, order?.status ?? "PENDING");
+
+  useEffect(() => {
+    if (!order) return;
+    if (!syncedRef.current) {
+      // Still catching up to the real fetched status — not a transition yet.
+      if (liveStatus !== order.status) return;
+      syncedRef.current = true;
+      prevStatusRef.current = liveStatus;
+      return;
+    }
+    if (prevStatusRef.current !== "DELIVERED" && liveStatus === "DELIVERED") {
+      setCelebrate(true);
+      hapticSuccess();
+    }
+    prevStatusRef.current = liveStatus;
+  }, [liveStatus, order]);
+
+  async function reorder() {
+    if (!order) return;
+    setReordering(true);
+    try {
+      const res = await api.get<{ items: Product[] }>("/products?pageSize=100");
+      const byId = new Map(res.items.map((p) => [p.id, p]));
+      for (const line of order.items) {
+        const product = byId.get(line.productId);
+        if (!product) continue; // discontinued since this order — skip rather than fail the whole reorder
+        const variant = line.selectedVariant === "Beef" || line.selectedVariant === "Chicken" ? line.selectedVariant : null;
+        addItem(product, variant, line.quantity);
+      }
+      goTo("cart");
+    } catch {
+      // Best-effort — the customer stays on the receipt view and can retry.
+    } finally {
+      setReordering(false);
+    }
+  }
 
   if (!activeOrderId || loadState === "not-found") {
     return (
@@ -153,6 +207,49 @@ export function OrderTrackingPage() {
         >
           {t("backToMenu")}
         </button>
+      </div>
+    );
+  }
+
+  if (liveStatus === "DELIVERED") {
+    return (
+      <div className="relative flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 pb-10 pt-10 text-center">
+        {celebrate && <Confetti />}
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-5xl">✅</div>
+        <div>
+          <p className="text-xl font-extrabold text-stone-900">{t("deliveredTitle")}</p>
+          <p className="mt-1 text-sm text-stone-500">{t("deliveredSubtitle")}</p>
+        </div>
+
+        <div className="w-full rounded-2xl border border-stone-100 bg-white p-4 text-left shadow-sm">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("receiptTitle")}</h2>
+          {order.items.map((item) => (
+            <div key={item.id} className="flex justify-between py-1 text-sm">
+              <span className="text-stone-700">
+                {item.quantity}× {item.productName}
+                {item.selectedVariant ? ` (${variantLabel(item.selectedVariant)})` : ""}
+              </span>
+              <span className="font-semibold text-stone-900">{formatSom(item.totalPrice)}</span>
+            </div>
+          ))}
+          <div className="mt-2 flex justify-between border-t border-stone-100 pt-2 text-sm font-bold text-stone-900">
+            <span>{t("receiptTotal")}</span>
+            <span>{formatSom(order.totalAmount)}</span>
+          </div>
+        </div>
+
+        <div className="mt-2 flex w-full flex-col gap-2">
+          <button
+            onClick={reorder}
+            disabled={reordering}
+            className="rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-lg shadow-brand/30 disabled:opacity-60"
+          >
+            {reordering ? t("reordering") : t("orderAgain")}
+          </button>
+          <button onClick={() => goTo("menu")} className="text-sm font-semibold text-stone-400 underline">
+            {t("doneBackToMenu")}
+          </button>
+        </div>
       </div>
     );
   }

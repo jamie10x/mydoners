@@ -10,6 +10,7 @@ orderRoutes.get("/", requireAuth, asyncHandler(orderController.list));
 // Static path must be registered before "/:orderId" or Express matches it
 // as an orderId.
 orderRoutes.get("/courier-queue", requireAuth, asyncHandler(orderController.courierQueue));
+orderRoutes.get("/mine", requireAuth, asyncHandler(orderController.mine));
 orderRoutes.post("/:orderId/courier-notified", requireAuth, asyncHandler(orderController.markCourierNotified));
 orderRoutes.post("/", requireAuth, asyncHandler(orderController.create));
 orderRoutes.get("/:orderId", requireAuth, asyncHandler(orderController.get));

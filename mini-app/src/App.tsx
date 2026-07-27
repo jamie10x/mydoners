@@ -7,6 +7,7 @@ import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { OrderTrackingPage } from "./pages/OrderTrackingPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { BottomNav } from "./components/BottomNav";
 import { t } from "./i18n/strings";
 
 function AppShell({ children }: { children: ReactNode }) {
@@ -61,11 +62,14 @@ export function App() {
 
   return (
     <AppShell>
-      {screen === "menu" && <MenuPage />}
-      {screen === "cart" && <CartPage />}
-      {screen === "checkout" && <CheckoutPage />}
-      {screen === "tracking" && <OrderTrackingPage />}
-      {screen === "profile" && <ProfilePage />}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {screen === "menu" && <MenuPage />}
+        {screen === "cart" && <CartPage />}
+        {screen === "checkout" && <CheckoutPage />}
+        {screen === "tracking" && <OrderTrackingPage />}
+        {screen === "profile" && <ProfilePage />}
+      </div>
+      {screen !== "checkout" && <BottomNav />}
     </AppShell>
   );
 }

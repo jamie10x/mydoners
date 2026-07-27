@@ -134,6 +134,39 @@ export const orderRepository = {
     }));
   },
 
+  // Backs GET /orders/mine — Profile's order-history list.
+  async listByUser(userId: number, limit: number) {
+    const matchingOrders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.userId, userId))
+      .orderBy(desc(orders.createdAt))
+      .limit(limit);
+
+    if (matchingOrders.length === 0) return [];
+
+    const orderIds = matchingOrders.map((o) => o.id);
+    const items = await db
+      .select({
+        id: orderItems.id,
+        orderId: orderItems.orderId,
+        productId: orderItems.productId,
+        productName: products.name,
+        selectedVariant: orderItems.selectedVariant,
+        quantity: orderItems.quantity,
+        unitPrice: orderItems.unitPrice,
+        totalPrice: orderItems.totalPrice,
+      })
+      .from(orderItems)
+      .innerJoin(products, eq(orderItems.productId, products.id))
+      .where(inArray(orderItems.orderId, orderIds));
+
+    return matchingOrders.map((order) => ({
+      order,
+      items: items.filter((item) => item.orderId === order.id),
+    }));
+  },
+
   async markPaid(id: number) {
     await db.update(orders).set({ paymentStatus: "PAID" }).where(eq(orders.id, id));
   },
