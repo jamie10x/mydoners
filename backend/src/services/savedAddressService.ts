@@ -1,5 +1,6 @@
 import type { SavedAddress } from "@mydoners/shared-contracts";
 import { savedAddressRepository } from "../repositories/savedAddressRepository";
+import { userRepository } from "../repositories/userRepository";
 import { ValidationError, NotFoundError } from "../errors/AppError";
 
 const MAX_ADDRESSES_PER_USER = 3;
@@ -25,6 +26,10 @@ export const savedAddressService = {
     if (count >= MAX_ADDRESSES_PER_USER) {
       throw new ValidationError(`You can save up to ${MAX_ADDRESSES_PER_USER} addresses — remove one first.`);
     }
+    // Bot onboarding can reach here for a telegramId with no `users` row yet
+    // (skipped the name/phone steps, went straight to sharing location) —
+    // without this the insert below fails its foreign key constraint.
+    await userRepository.ensureExists(userId);
     const row = await savedAddressRepository.create(userId, label, latitude, longitude, landmarkAddress);
     if (!row) throw new Error("Failed to create saved address");
     return toApi(row);

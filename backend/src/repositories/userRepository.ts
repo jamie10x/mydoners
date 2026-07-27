@@ -55,6 +55,13 @@ export const userRepository = {
       .where(eq(users.telegramId, telegramId));
   },
 
+  // Upsert, not a plain UPDATE: this is called from the customer bot's
+  // onboarding flow (see docs on the /profile route), which can reach a
+  // telegramId that has never opened the Mini App — the only other place a
+  // `users` row gets created (upsertFromTelegram, above). A plain UPDATE
+  // against a nonexistent row silently affects 0 rows and the caller's
+  // subsequent findByTelegramId comes back null, which is exactly the
+  // "User not found after updating profile" failure this replaces.
   async updateProfile(
     telegramId: number,
     patch: { firstName?: string; lastName?: string; phoneNumber?: string },
@@ -67,6 +74,16 @@ export const userRepository = {
       set.isPhoneVerified = true;
     }
     if (Object.keys(set).length === 0) return;
-    await db.update(users).set(set).where(eq(users.telegramId, telegramId));
+    await db
+      .insert(users)
+      .values({ telegramId, ...set })
+      .onConflictDoUpdate({ target: users.telegramId, set });
+  },
+
+  // Same reasoning as updateProfile above — lets savedAddressService.create
+  // insert a row for a bot-onboarding user who doesn't have a `users` row
+  // yet, instead of failing the address insert's foreign key constraint.
+  async ensureExists(telegramId: number) {
+    await db.insert(users).values({ telegramId }).onConflictDoNothing();
   },
 };
