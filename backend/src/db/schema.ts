@@ -86,6 +86,11 @@ export const orders = pgTable("orders", {
   // customer read it back on arrival before cash collection is confirmed.
   cashConfirmationCode: varchar("cash_confirmation_code", { length: 2 }),
   deliveryProofPhotoUrl: text("delivery_proof_photo_url"),
+  // When the courier bot successfully sent the dispatch card for this order.
+  // NULL on a READY_FOR_DELIVERY order means the courier hasn't been told
+  // yet — the bot's backfill loop uses this to re-deliver dispatches that
+  // were lost while it was down (the WS event is only the fast path).
+  courierNotifiedAt: timestamp("courier_notified_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

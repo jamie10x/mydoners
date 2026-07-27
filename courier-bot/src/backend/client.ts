@@ -17,7 +17,27 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface CourierQueueEntry {
+  orderId: number;
+  status: OrderStatus;
+  courierNotifiedAt: string | null;
+  data: import("@mydoners/shared-contracts").CourierAssignedData;
+}
+
 export const backendClient = {
+  fetchCourierQueue(): Promise<CourierQueueEntry[]> {
+    return request("/orders/courier-queue", { method: "GET" });
+  },
+
+  markCourierNotified(orderId: number): Promise<void> {
+    return fetch(`${env.backendUrl}/orders/${orderId}/courier-notified`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.courierBotApiKey}` },
+    }).then((res) => {
+      if (!res.ok) throw new Error(`Backend request failed: ${res.status} courier-notified`);
+    });
+  },
+
   updateOrderStatus(orderId: number, status: OrderStatus, changedBy: ChangedBy): Promise<Order> {
     return request(`/orders/${orderId}/status`, {
       method: "PATCH",

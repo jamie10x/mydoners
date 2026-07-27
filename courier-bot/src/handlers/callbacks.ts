@@ -44,10 +44,16 @@ export function registerCallbackHandlers(bot: Bot) {
   });
 
   // Delivery-proof photo — only acted on while an order is actually
-  // awaiting one, so this never interferes with normal chat.
+  // awaiting one, so this never interferes with normal chat. With several
+  // deliveries awaiting input, the courier must reply to the right order
+  // card — otherwise the photo could land on the wrong order.
   bot.on("message:photo", async (ctx) => {
-    const found = courierState.findPendingForMessage();
+    const found = courierState.resolveForMessage(ctx.message.reply_to_message?.message_id);
     if (!found) return;
+    if (found === "ambiguous") {
+      await ctx.reply("Bir nechta buyurtma kutilmoqda — fotoni tegishli buyurtma kartasiga javob (reply) qilib yuboring.");
+      return;
+    }
     const [orderId, pending] = found;
     if (!pending.awaitingPhoto) return;
 
@@ -69,8 +75,12 @@ export function registerCallbackHandlers(bot: Bot) {
   // Cash confirmation code — only acted on once a photo has already been
   // captured for a CASH order still awaiting a code.
   bot.on("message:text", async (ctx) => {
-    const found = courierState.findPendingForMessage();
+    const found = courierState.resolveForMessage(ctx.message.reply_to_message?.message_id);
     if (!found) return;
+    if (found === "ambiguous") {
+      await ctx.reply("Bir nechta buyurtma kutilmoqda — kodni tegishli buyurtma kartasiga javob (reply) qilib yuboring.");
+      return;
+    }
     const [orderId, pending] = found;
     if (pending.awaitingPhoto || !pending.awaitingCashCode) return;
 

@@ -143,6 +143,10 @@ export const orderRepository = {
     await db.update(orders).set({ deliveryProofPhotoUrl: photoUrl }).where(eq(orders.id, id));
   },
 
+  async markCourierNotified(id: number) {
+    await db.update(orders).set({ courierNotifiedAt: new Date() }).where(eq(orders.id, id));
+  },
+
   async updateStatus(id: number, newStatus: OrderStatus, changedBy: ChangedBy) {
     return db.transaction(async (tx) => {
       const [current] = await tx.select().from(orders).where(eq(orders.id, id));

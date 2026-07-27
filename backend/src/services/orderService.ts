@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import type { ChangedBy, Order, OrderStatus } from "@mydoners/shared-contracts";
+import type { ChangedBy, CourierAssignedData, Order, OrderStatus } from "@mydoners/shared-contracts";
 import { orderRepository, type NewOrderItemInput } from "../repositories/orderRepository";
 import { productRepository } from "../repositories/productRepository";
 import { userRepository } from "../repositories/userRepository";
@@ -65,6 +65,25 @@ function toApiOrder(order: OrderRow, items: OrderItemRow[]): Order {
 
 function generateCashConfirmationCode(): string {
   return String(randomInt(0, 100)).padStart(2, "0");
+}
+
+type UserRow = Awaited<ReturnType<typeof userRepository.findByTelegramId>>;
+
+// Everything the courier needs on the dispatch card — shared by the WS
+// courier.assigned event (fast path) and GET /orders/courier-queue (the
+// bot's backfill/recovery path), so the two can never drift apart.
+function buildCourierData(order: OrderRow, user: UserRow): CourierAssignedData {
+  return {
+    customerName: order.customerName ?? ([user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Unknown"),
+    customerPhone: order.customerPhone ?? (user?.isPhoneVerified ? user.phoneNumber : null),
+    latitude: order.latitude,
+    longitude: order.longitude,
+    landmarkAddress: order.landmarkAddress,
+    paymentType: order.paymentType as CourierAssignedData["paymentType"],
+    paymentStatus: order.paymentStatus as CourierAssignedData["paymentStatus"],
+    amountToCollect: order.paymentStatus === "PAID" ? 0 : Number(order.totalAmount),
+    courierNotes: order.courierNotes,
+  };
 }
 
 export const orderService = {
@@ -238,6 +257,31 @@ export const orderService = {
     return results.map(({ order, items }) => toApiOrder(order, items));
   },
 
+  // Backs GET /orders/courier-queue — the courier bot's recovery loop. An
+  // order in READY_FOR_DELIVERY with courierNotifiedAt still NULL is a
+  // dispatch that was never delivered (bot down when the WS event fired);
+  // ON_THE_WAY entries let a restarted bot rebuild its in-flight state.
+  async getCourierQueue(): Promise<
+    Array<{ orderId: number; status: OrderStatus; courierNotifiedAt: string | null; data: CourierAssignedData }>
+  > {
+    const results = await orderRepository.listByStatus(["READY_FOR_DELIVERY", "ON_THE_WAY"]);
+    return Promise.all(
+      results.map(async ({ order }) => {
+        const user = order.userId ? await userRepository.findByTelegramId(order.userId) : null;
+        return {
+          orderId: order.id,
+          status: order.status as OrderStatus,
+          courierNotifiedAt: order.courierNotifiedAt?.toISOString() ?? null,
+          data: buildCourierData(order, user),
+        };
+      }),
+    );
+  },
+
+  async markCourierNotified(orderId: number): Promise<void> {
+    await orderRepository.markCourierNotified(orderId);
+  },
+
   async updateStatus(orderId: number, newStatus: OrderStatus, changedBy: ChangedBy): Promise<Order> {
     const existing = await orderRepository.findById(orderId);
     if (!existing) throw new NotFoundError(`Order ${orderId} not found`);
@@ -275,18 +319,7 @@ export const orderService = {
 
     if (newStatus === "READY_FOR_DELIVERY") {
       const user = await userRepository.findByTelegramId(userId);
-      realtime.courierAssigned(orderId, {
-        customerName:
-          existing.order.customerName ?? ([user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Unknown"),
-        customerPhone: existing.order.customerPhone ?? (user?.isPhoneVerified ? user.phoneNumber : null),
-        latitude: existing.order.latitude,
-        longitude: existing.order.longitude,
-        landmarkAddress: existing.order.landmarkAddress,
-        paymentType: existing.order.paymentType,
-        paymentStatus: existing.order.paymentStatus,
-        amountToCollect: existing.order.paymentStatus === "PAID" ? 0 : Number(existing.order.totalAmount),
-        courierNotes: existing.order.courierNotes,
-      });
+      realtime.courierAssigned(orderId, buildCourierData(existing.order, user));
     }
 
     if (newStatus === "CANCELLED") {

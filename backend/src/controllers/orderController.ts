@@ -32,6 +32,16 @@ export const orderController = {
     res.json(await orderService.listByStatus(statuses));
   },
 
+  // Courier bot's recovery loop — see orderService.getCourierQueue.
+  async courierQueue(_req: Request, res: Response) {
+    res.json(await orderService.getCourierQueue());
+  },
+
+  async markCourierNotified(req: Request, res: Response) {
+    await orderService.markCourierNotified(Number(req.params.orderId));
+    res.status(204).end();
+  },
+
   async create(req: Request, res: Response) {
     if (req.actor?.type !== "user") {
       throw new ForbiddenError("Only Mini App customers can place orders");

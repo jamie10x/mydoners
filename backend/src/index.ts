@@ -6,6 +6,7 @@ import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { initSocket } from "./ws/socket";
 import { ensureRedisConnected } from "./core/redis";
+import { startTelegramRetryWorker } from "./core/telegram";
 
 const app = express();
 // Mini App, Android KDS, and Courier Bot are all served from different
@@ -30,6 +31,7 @@ const httpServer = createServer(app);
 initSocket(httpServer);
 
 await ensureRedisConnected();
+startTelegramRetryWorker();
 
 httpServer.listen(env.port, () => {
   console.log(`MyDoners backend listening on :${env.port} (REST + WebSocket at /realtime)`);
