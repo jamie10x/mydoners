@@ -63,7 +63,14 @@ class KdsViewModel(
         viewModelScope.launch {
             orderRepository.observeRealtimeEvents().collect { event ->
                 when (event) {
-                    RealtimeEvent.Connected -> _state.update { it.copy(isConnected = true) }
+                    // Refetch on every (re)connect: any order created or
+                    // changed while the socket was down produced no event,
+                    // so the current grid may be stale. The extra load on
+                    // first connect is a harmless idempotent replace.
+                    RealtimeEvent.Connected -> {
+                        _state.update { it.copy(isConnected = true) }
+                        loadActiveOrders()
+                    }
                     RealtimeEvent.Disconnected -> _state.update { it.copy(isConnected = false) }
                     is RealtimeEvent.OrderCreated -> refreshOrder(event.orderId)
                     is RealtimeEvent.OrderStatusChanged -> refreshOrder(event.orderId)
