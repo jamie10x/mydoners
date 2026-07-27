@@ -7,6 +7,7 @@ import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { OrderTrackingPage } from "./pages/OrderTrackingPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { t } from "./i18n/strings";
 
 function AppShell({ children }: { children: ReactNode }) {
   // Locks the whole app to a phone-width column, centered on wider viewports
@@ -40,7 +41,7 @@ export function App() {
       <AppShell>
         <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-3">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand" />
-          <p className="text-sm font-medium text-stone-400">Loading MyDoners…</p>
+          <p className="text-sm font-medium text-stone-400">{t("loadingApp")}</p>
         </div>
       </AppShell>
     );
@@ -51,7 +52,7 @@ export function App() {
       <AppShell>
         <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
           <p className="text-3xl">😕</p>
-          <p className="font-semibold text-stone-900">Couldn't sign you in</p>
+          <p className="font-semibold text-stone-900">{t("signInFailed")}</p>
           <p className="text-sm text-stone-500">{error}</p>
         </div>
       </AppShell>

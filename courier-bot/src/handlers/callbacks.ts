@@ -6,17 +6,17 @@ import { env } from "../config/env";
 async function submitDelivery(ctx: Context, orderId: number, pending: PendingDelivery, cashCode: string | null) {
   try {
     await backendClient.confirmDelivery(orderId, pending.photoBlob!, cashCode);
-    await ctx.reply(`✅ Delivery confirmed — Order #${orderId}`);
+    await ctx.reply(`✅ Yetkazma tasdiqlandi — #${orderId}-buyurtma`);
     courierState.clear(orderId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const isCashCodeRejection = message.includes("400");
     if (isCashCodeRejection && cashCode) {
       pending.awaitingCashCode = true;
-      await ctx.reply(`⚠️ That code didn't match — ask the customer to read it again and resend.`);
+      await ctx.reply(`⚠️ Kod mos kelmadi — mijozdan qayta so'rab, yana yuboring.`);
     } else {
       pending.awaitingPhoto = !pending.photoBlob;
-      await ctx.reply(`⚠️ Couldn't confirm delivery for #${orderId}: ${message}`);
+      await ctx.reply(`⚠️ #${orderId}-buyurtma yetkazmasini tasdiqlab bo'lmadi: ${message}`);
     }
   }
 }
@@ -25,9 +25,9 @@ export function registerCallbackHandlers(bot: Bot) {
   bot.callbackQuery(/^on_my_way:(\d+)$/, async (ctx) => {
     const orderId = Number(ctx.match![1]);
     await backendClient.updateOrderStatus(orderId, "ON_THE_WAY", "COURIER");
-    await ctx.answerCallbackQuery({ text: `Order #${orderId} marked as on the way` });
+    await ctx.answerCallbackQuery({ text: `#${orderId}-buyurtma yo'lda deb belgilandi` });
     await ctx.editMessageReplyMarkup();
-    await ctx.reply(`🚴 On the way — Order #${orderId}`);
+    await ctx.reply(`🚴 Yo'lda — #${orderId}-buyurtma`);
   });
 
   bot.callbackQuery(/^delivered:(\d+)$/, async (ctx) => {
@@ -37,10 +37,10 @@ export function registerCallbackHandlers(bot: Bot) {
     await ctx.editMessageReplyMarkup();
 
     if (!pending) {
-      await ctx.reply(`Order #${orderId} — couldn't find its details anymore, contact support.`);
+      await ctx.reply(`#${orderId}-buyurtma ma'lumotlari topilmadi — administratorga murojaat qiling.`);
       return;
     }
-    await ctx.reply(`📸 Send a photo as delivery proof for Order #${orderId}.`);
+    await ctx.reply(`📸 #${orderId}-buyurtma yetkazilganini tasdiqlash uchun foto yuboring.`);
   });
 
   // Delivery-proof photo — only acted on while an order is actually
@@ -60,7 +60,7 @@ export function registerCallbackHandlers(bot: Bot) {
     pending.awaitingPhoto = false;
 
     if (pending.awaitingCashCode) {
-      await ctx.reply(`💵 Now enter the 2-digit cash confirmation code the customer gives you.`);
+      await ctx.reply(`💵 Endi mijoz aytgan 2 xonali tasdiqlash kodini kiriting.`);
     } else {
       await submitDelivery(ctx, orderId, pending, null);
     }

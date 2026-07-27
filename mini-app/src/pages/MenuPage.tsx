@@ -8,6 +8,7 @@ import { useCartStore } from "../store/cartStore";
 import { useUiStore } from "../store/uiStore";
 import { useAuthStore } from "../store/authStore";
 import { formatSom } from "../lib/format";
+import { t } from "../i18n/strings";
 
 interface PaginatedProducts {
   items: Product[];
@@ -61,12 +62,12 @@ export function MenuPage() {
             <img src="/logo.svg" alt="" className="h-9 w-9 shrink-0 rounded-xl" />
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-extrabold leading-tight text-stone-900">MyDoners</h1>
-              <p className="text-xs text-stone-400">Halol va sifatli fast food</p>
+              <p className="text-xs text-stone-400">{t("tagline")}</p>
             </div>
             <button
               onClick={() => goTo("profile")}
               className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700"
-              aria-label="Profile"
+              aria-label={t("profileAria")}
             >
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="8" r="3.4" />
@@ -88,13 +89,10 @@ export function MenuPage() {
               <div key={i} className="h-24 animate-pulse rounded-2xl bg-stone-200/60" />
             ))}
           {!loading && loadFailed && (
-            <ErrorState
-              message="Couldn't load the menu — check your connection."
-              onRetry={() => setReloadKey((k) => k + 1)}
-            />
+            <ErrorState message={t("menuLoadFailed")} onRetry={() => setReloadKey((k) => k + 1)} />
           )}
           {!loading && !loadFailed && products.length === 0 && (
-            <p className="py-16 text-center text-sm text-stone-400">No items here yet.</p>
+            <p className="py-16 text-center text-sm text-stone-400">{t("noItems")}</p>
           )}
           {!loadFailed && products.map((product) => (
             <ProductCard key={product.id} product={product} />
@@ -107,9 +105,7 @@ export function MenuPage() {
           onClick={() => goTo("cart")}
           className="absolute inset-x-4 bottom-4 z-20 flex items-center justify-between rounded-2xl bg-brand px-5 py-3.5 font-semibold text-white shadow-lg shadow-brand/30 active:bg-brand-dark"
         >
-          <span>
-            🛒 View cart · {itemCount} item{itemCount > 1 ? "s" : ""}
-          </span>
+          <span>{t("viewCart", { count: itemCount })}</span>
           <span>{formatSom(totalAmount)}</span>
         </button>
       )}

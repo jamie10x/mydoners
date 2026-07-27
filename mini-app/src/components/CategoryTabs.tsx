@@ -1,4 +1,5 @@
 import type { Category } from "@mydoners/shared-contracts";
+import { t } from "../i18n/strings";
 
 interface CategoryTabsProps {
   categories: Category[];
@@ -15,7 +16,7 @@ export function CategoryTabs({ categories, activeCategoryId, onSelect }: Categor
           activeCategoryId === null ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
         }`}
       >
-        All
+        {t("allCategories")}
       </button>
       {categories.map((category) => (
         <button

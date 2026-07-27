@@ -3,7 +3,10 @@ import { sendTelegramMessage } from "../core/telegram";
 import { env } from "../config/env";
 
 function formatSom(amount: number): string {
-  return `${amount.toLocaleString("en-US")} UZS`;
+  const grouped = Math.round(amount)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${grouped} so'm`;
 }
 
 // Pushed to the customer via @mydoner_bot on order creation and every status
@@ -11,23 +14,23 @@ function formatSom(amount: number): string {
 // open (Telegram doesn't guarantee the WebView survives being backgrounded),
 // so the bot chat is the durable channel for "what's happening with my order."
 const trackOrderButton = {
-  inline_keyboard: [[{ text: "Track order", web_app: { url: env.miniAppUrl } }]],
+  inline_keyboard: [[{ text: "Buyurtmani kuzatish", web_app: { url: env.miniAppUrl } }]],
 };
 
 const STATUS_MESSAGES: Partial<Record<OrderStatus, string>> = {
-  COOKING: "🍳 Order #{id} is being cooked.",
-  READY_FOR_DELIVERY: "📦 Order #{id} is ready and waiting for a courier.",
-  ON_THE_WAY: "🚴 Order #{id} is on the way!",
-  DELIVERED: "✅ Order #{id} was delivered. Enjoy your meal!",
-  CANCELLED: "❌ Order #{id} was cancelled.",
+  COOKING: "🍳 #{id}-buyurtmangiz oshxonada tayyorlanmoqda.",
+  READY_FOR_DELIVERY: "📦 #{id}-buyurtmangiz tayyor — kuryer kutilmoqda.",
+  ON_THE_WAY: "🚴 #{id}-buyurtmangiz yo'lda!",
+  DELIVERED: "✅ #{id}-buyurtmangiz yetkazib berildi. Yoqimli ishtaha!",
+  CANCELLED: "❌ #{id}-buyurtmangiz bekor qilindi.",
 };
 
 export const orderNotificationService = {
   async notifyOrderReceived(telegramId: number, order: Order): Promise<void> {
     const text =
-      `🌯 <b>Order #${order.id} received!</b>\n` +
-      `Total: ${formatSom(order.totalAmount)}\n\n` +
-      `We'll message you here as it moves through the kitchen and out for delivery.`;
+      `🌯 <b>#${order.id}-buyurtmangiz qabul qilindi!</b>\n` +
+      `Jami: ${formatSom(order.totalAmount)}\n\n` +
+      `Buyurtma holati o'zgarganda sizga shu yerda xabar beramiz.`;
     await sendTelegramMessage(telegramId, text, { parseMode: "HTML", replyMarkup: trackOrderButton });
   },
 

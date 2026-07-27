@@ -1,6 +1,7 @@
 import { useCartStore, unitPriceFor } from "../store/cartStore";
 import { useUiStore } from "../store/uiStore";
 import { formatSom } from "../lib/format";
+import { t, variantLabel } from "../i18n/strings";
 
 export function CartPage() {
   const linesByKey = useCartStore((s) => s.lines);
@@ -15,19 +16,20 @@ export function CartPage() {
         <header className="flex items-center gap-3 px-4 pt-5">
           <button
             onClick={() => goTo("menu")}
+            aria-label={t("backToMenu")}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-200/70 text-stone-700"
           >
             ←
           </button>
-          <h1 className="text-lg font-extrabold text-stone-900">Your cart</h1>
+          <h1 className="text-lg font-extrabold text-stone-900">{t("yourCart")}</h1>
         </header>
 
         {lines.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-20 text-center">
             <p className="text-3xl">🛒</p>
-            <p className="text-sm font-medium text-stone-400">Your cart is empty.</p>
+            <p className="text-sm font-medium text-stone-400">{t("cartEmpty")}</p>
             <button onClick={() => goTo("menu")} className="mt-2 text-sm font-semibold text-brand">
-              Browse the menu →
+              {t("browseMenu")}
             </button>
           </div>
         ) : (
@@ -42,12 +44,15 @@ export function CartPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-stone-900">{line.product.name}</p>
-                    {line.selectedVariant && <p className="text-sm text-stone-400">{line.selectedVariant}</p>}
+                    {line.selectedVariant && (
+                      <p className="text-sm text-stone-400">{variantLabel(line.selectedVariant)}</p>
+                    )}
                     <p className="text-sm font-bold text-brand">{formatSom(unitPrice * line.quantity)}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setQuantity(line.product.id, line.selectedVariant, line.quantity - 1)}
+                      aria-label="−"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-200/70 text-lg font-semibold leading-none text-stone-700"
                     >
                       −
@@ -55,6 +60,7 @@ export function CartPage() {
                     <span className="w-4 text-center font-semibold text-stone-900">{line.quantity}</span>
                     <button
                       onClick={() => setQuantity(line.product.id, line.selectedVariant, line.quantity + 1)}
+                      aria-label="+"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-200/70 text-lg font-semibold leading-none text-stone-700"
                     >
                       +
@@ -72,7 +78,7 @@ export function CartPage() {
           onClick={() => goTo("checkout")}
           className="absolute inset-x-4 bottom-4 flex items-center justify-between rounded-2xl bg-brand px-5 py-3.5 font-semibold text-white shadow-lg shadow-brand/30 active:bg-brand-dark"
         >
-          <span>Checkout</span>
+          <span>{t("checkout")}</span>
           <span>{formatSom(totalAmount)}</span>
         </button>
       )}

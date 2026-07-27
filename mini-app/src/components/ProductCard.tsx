@@ -4,6 +4,7 @@ import { useCartStore } from "../store/cartStore";
 import { VariantModal } from "./VariantModal";
 import { ProductThumbnail } from "./ProductThumbnail";
 import { formatSom } from "../lib/format";
+import { t } from "../i18n/strings";
 
 export function ProductCard({ product }: { product: Product }) {
   const [showVariantModal, setShowVariantModal] = useState(false);
@@ -33,7 +34,7 @@ export function ProductCard({ product }: { product: Product }) {
         onClick={handleAdd}
         className="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white active:bg-brand-dark"
       >
-        Add
+        {t("addToCart")}
       </button>
 
       {showVariantModal && (

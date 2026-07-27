@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Map as MapLibreMap, Marker, AttributionControl, setWorkerUrl } from "maplibre-gl";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { t } from "../i18n/strings";
 
 // MapLibre resolves its worker script relative to its own module URL at
 // runtime (`new URL('./maplibre-gl-worker.mjs', import.meta.url)`), which
@@ -120,18 +121,18 @@ export function MapPicker({ coords, onChange, onStatusChange }: MapPickerProps) 
       <div className="relative h-48 overflow-hidden rounded-2xl border border-stone-200">
         <div ref={containerRef} className="h-full w-full" />
         <div className="pointer-events-none absolute left-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-stone-700 shadow-sm">
-          ✥ Drag the pin, or tap the map
+          {t("dragPinHint")}
         </div>
         <button
           type="button"
           onClick={() => locate(true)}
           className="absolute bottom-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-lg bg-white text-lg text-brand shadow-sm"
-          aria-label="Use current location"
+          aria-label={t("useCurrentLocationAria")}
         >
           ⌖
         </button>
       </div>
-      {status === "locating" && <p className="mt-1.5 text-xs font-medium text-stone-400">Finding your location…</p>}
+      {status === "locating" && <p className="mt-1.5 text-xs font-medium text-stone-400">{t("locating")}</p>}
       {coords && (
         <p className="mt-1.5 font-mono text-xs text-stone-400">
           {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}

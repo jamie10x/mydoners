@@ -1,3 +1,5 @@
+import { t } from "../i18n/strings";
+
 interface ErrorStateProps {
   message: string;
   onRetry: () => void;
@@ -13,7 +15,7 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
         onClick={onRetry}
         className="rounded-xl bg-stone-900 px-5 py-2 text-sm font-semibold text-white active:bg-stone-700"
       >
-        Retry
+        {t("retry")}
       </button>
     </div>
   );

@@ -9,10 +9,10 @@ const bot = new Bot(env.botToken);
 // http(s)/tg:// are accepted) — a call button would fail every send. The
 // phone number is plain text in the message instead; Telegram auto-detects
 // and tap-to-calls properly formatted international numbers on its own.
-const orderKeyboard = new InlineKeyboard().webApp("🌯 Order now", env.miniAppUrl);
+const orderKeyboard = new InlineKeyboard().webApp("🌯 Buyurtma berish", env.miniAppUrl);
 
 const helpKeyboard = new InlineKeyboard()
-  .webApp("🌯 Order now", env.miniAppUrl)
+  .webApp("🌯 Buyurtma berish", env.miniAppUrl)
   .row()
   .url("📷 Instagram", BUSINESS.instagramUrl)
   .url("📢 Channel", BUSINESS.channelUrl);
@@ -24,20 +24,20 @@ bot.command("start", async (ctx) => {
   }
 
   await ctx.reply(
-    `🌯 <b>Welcome to MyDoners!</b>\n${BUSINESS.tagline}\n\n` +
-      `Order lavash, pizza, KFC, hotdogs and more — delivered straight to you.\n\n` +
-      `Tap below to open the menu and order.`,
+    `🌯 <b>MyDoners'ga xush kelibsiz!</b>\n${BUSINESS.tagline}\n\n` +
+      `Lavash, pitsa, KFC, hotdog va boshqalarga buyurtma bering — o'zimiz yetkazib beramiz.\n\n` +
+      `Menyuni ochish uchun quyidagi tugmani bosing.`,
     { parse_mode: "HTML", reply_markup: orderKeyboard },
   );
 });
 
 bot.command("help", async (ctx) => {
   await ctx.reply(
-    `<b>How ordering works</b>\n` +
-      `1. Open the menu with the button below (or the "Order now" button next to the message box)\n` +
-      `2. Add items to your cart and check out\n` +
-      `3. Track your order live, right in the chat\n\n` +
-      `<b>Need a human?</b>\n` +
+    `<b>Buyurtma berish tartibi</b>\n` +
+      `1. Quyidagi tugma orqali menyuni oching (yoki xabar yozish maydoni yonidagi "Buyurtma berish" tugmasini bosing)\n` +
+      `2. Mahsulotlarni savatga qo'shib, buyurtmani rasmiylashtiring\n` +
+      `3. Buyurtmangizni shu chatda jonli kuzatib boring\n\n` +
+      `<b>Operator kerakmi?</b>\n` +
       `📞 ${BUSINESS.phone}\n` +
       `📍 ${BUSINESS.address}\n` +
       `🕒 ${BUSINESS.hours}`,
@@ -82,18 +82,18 @@ bot.on("message:location", async (ctx) => {
       body: JSON.stringify({ latitude, longitude }),
     });
     if (!res.ok) throw new Error(`backend responded ${res.status}`);
-    await ctx.reply("📍 Got it, thanks! Head back to checkout to finish your order.", {
+    await ctx.reply("📍 Qabul qilindi, rahmat! Buyurtmani yakunlash uchun ilovaga qayting.", {
       reply_markup: { remove_keyboard: true },
     });
   } catch (err) {
     console.error("Failed to forward shared location to backend:", err);
-    await ctx.reply("Something went wrong saving your location — please try sharing it again.");
+    await ctx.reply("Joylashuvni saqlashda xatolik yuz berdi — qayta yuborib ko'ring.");
   }
 });
 
 // Anything else — nudge toward /help rather than going unanswered.
 bot.on("message", async (ctx) => {
-  await ctx.reply("Type /help to see how ordering works, or tap the button below to order.", {
+  await ctx.reply("Buyurtma berish tartibini bilish uchun /help yozing yoki quyidagi tugmani bosing.", {
     reply_markup: orderKeyboard,
   });
 });
@@ -102,8 +102,8 @@ bot.catch((err) => console.error("Customer bot error:", err));
 
 async function main() {
   await bot.api.setMyCommands([
-    { command: "start", description: "Welcome & open the menu" },
-    { command: "help", description: "How ordering works, contact & hours" },
+    { command: "start", description: "Boshlash va menyuni ochish" },
+    { command: "help", description: "Buyurtma tartibi, aloqa va ish vaqti" },
   ]);
 
   // Long polling for local dev (default), webhook mode for production — see

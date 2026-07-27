@@ -15,12 +15,12 @@ function locationKey(telegramId: number): string {
 
 async function sendLocationRequestMessage(telegramId: number, isReminder: boolean): Promise<void> {
   const text = isReminder
-    ? "Still need your location for delivery — tap the button below to share it."
-    : "Tap the button below to share your current location so we can deliver your order.";
+    ? "Yetkazib berish uchun joylashuvingiz hali ham kerak — ulashish uchun quyidagi tugmani bosing."
+    : "Buyurtmangizni yetkazib berishimiz uchun quyidagi tugma orqali joylashuvingizni ulashing.";
 
   await sendTelegramMessage(telegramId, text, {
     replyMarkup: {
-      keyboard: [[{ text: "📍 Share my location", request_location: true }]],
+      keyboard: [[{ text: "📍 Joylashuvimni ulashish", request_location: true }]],
       resize_keyboard: true,
       one_time_keyboard: true,
     },

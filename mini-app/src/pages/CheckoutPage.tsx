@@ -11,6 +11,7 @@ import { useSavedAddresses } from "../hooks/useSavedAddresses";
 import type { Coords, GeoStatus } from "../components/MapPicker";
 import { formatSom } from "../lib/format";
 import { normalizeUzPhone } from "../lib/phone";
+import { t, variantLabel } from "../i18n/strings";
 
 // Keep in sync with customer-bot/src/business.ts — used when cash payment is
 // blocked and there's no online method to fall back to.
@@ -22,7 +23,7 @@ const MapPicker = lazy(() => import("../components/MapPicker").then((m) => ({ de
 const MapPickerFallback = () => <div className="h-48 animate-pulse rounded-2xl bg-stone-200/60" />;
 
 const PAYMENT_OPTIONS: Array<{ value: PaymentType; label: string; icon: string; comingSoon?: boolean }> = [
-  { value: "CASH", label: "Cash on Delivery", icon: "💵" },
+  { value: "CASH", label: t("cashOnDelivery"), icon: "💵" },
   { value: "CLICK", label: "Click", icon: "🔵", comingSoon: true },
   { value: "PAYME", label: "Payme", icon: "🟢", comingSoon: true },
 ];
@@ -127,7 +128,7 @@ export function CheckoutPage() {
       if (created) setSelectedAddressId(created.id);
       setSavingLabel(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.envelope.message : "Couldn't save that address — try again.");
+      setError(err instanceof ApiError ? err.envelope.message : t("saveAddressFailed"));
     } finally {
       setSaving(false);
     }
@@ -169,7 +170,7 @@ export function CheckoutPage() {
           setCodBlocked(true);
         }
       } else {
-        setError("Failed to place order. Please try again.");
+        setError(t("placeOrderFailed"));
       }
     } finally {
       setSubmitting(false);
@@ -182,8 +183,8 @@ export function CheckoutPage() {
         <div className="flex h-20 w-20 animate-[pop_0.35s_ease-out] items-center justify-center rounded-full bg-green-100 text-5xl">
           ✅
         </div>
-        <p className="text-xl font-extrabold text-stone-900">Order placed!</p>
-        <p className="text-sm font-medium text-stone-500">Order #{placedOrderId} — taking you to tracking…</p>
+        <p className="text-xl font-extrabold text-stone-900">{t("orderPlaced")}</p>
+        <p className="text-sm font-medium text-stone-500">{t("takingToTracking", { id: placedOrderId })}</p>
       </div>
     );
   }
@@ -198,17 +199,17 @@ export function CheckoutPage() {
           >
             ←
           </button>
-          <h1 className="text-lg font-extrabold text-stone-900">Checkout</h1>
+          <h1 className="text-lg font-extrabold text-stone-900">{t("checkoutTitle")}</h1>
         </header>
 
         <div className="flex flex-col gap-5 px-4 pt-4">
           <section>
-            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Your details</h2>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("yourDetails")}</h2>
             <div className="flex flex-col gap-2">
               <input
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Full name"
+                placeholder={t("fullNamePlaceholder")}
                 className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
               />
               <input
@@ -222,14 +223,14 @@ export function CheckoutPage() {
               />
               {phoneInvalid && (
                 <p className="text-xs font-medium text-red-600">
-                  Enter a valid Uzbek number — e.g. +998 90 123 45 67
+                  {t("phoneInvalid")}
                 </p>
               )}
             </div>
           </section>
 
           <section>
-            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Delivery location</h2>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("deliveryLocation")}</h2>
 
             {savedAddresses.addresses.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">
@@ -257,14 +258,14 @@ export function CheckoutPage() {
               <div className="mt-2">
                 {savingLabel === null ? (
                   <button onClick={() => setSavingLabel("")} className="text-xs font-semibold text-brand">
-                    📌 Save this address for next time
+                    {t("saveThisAddress")}
                   </button>
                 ) : (
                   <div className="flex gap-2">
                     <input
                       value={savingLabel}
                       onChange={(e) => setSavingLabel(e.target.value)}
-                      placeholder="e.g. Home, Work"
+                      placeholder={t("addressLabelPlaceholder")}
                       autoFocus
                       className="min-w-0 flex-1 rounded-lg border border-stone-200 px-3 py-1.5 text-sm outline-none focus:border-brand"
                     />
@@ -273,7 +274,7 @@ export function CheckoutPage() {
                       disabled={saving || !savingLabel.trim()}
                       className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40"
                     >
-                      {saving ? "…" : "Save"}
+                      {saving ? "…" : t("save")}
                     </button>
                   </div>
                 )}
@@ -283,10 +284,9 @@ export function CheckoutPage() {
             {geoStatus === "denied" && !coords && (
               <div className="mt-2 flex flex-col gap-2">
                 <div className="rounded-xl bg-red-50 px-3 py-2.5">
-                  <p className="text-sm font-medium text-red-700">Location access is blocked — delivery needs it.</p>
+                  <p className="text-sm font-medium text-red-700">{t("locationBlocked")}</p>
                   <p className="mt-1 text-xs text-red-600">
-                    Enable location for this app in Telegram Settings → Privacy and Security → Location, or in your
-                    browser's site settings, then tap the ⌖ button above again.
+                    {t("locationBlockedHelp")}
                   </p>
                 </div>
 
@@ -298,19 +298,18 @@ export function CheckoutPage() {
                     }}
                     className="w-full rounded-xl border border-brand/30 bg-brand/5 px-3 py-3 text-sm font-semibold text-brand"
                   >
-                    📨 Share via Telegram instead
+                    {t("shareViaTelegram")}
                   </button>
                 )}
                 {(telegramLocation.status === "requesting" || telegramLocation.status === "waiting") && (
                   <p className="rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-medium text-stone-600">
-                    Check Telegram — tap "Share my location" in the message we just sent you. You can close this app
-                    and come back once you've shared it.
+                    {t("checkTelegramForLocation")}
                   </p>
                 )}
                 {telegramLocation.status === "error" && (
                   <div>
                     <p className="text-sm font-medium text-red-600">
-                      Didn't get it in time — check your Telegram notifications, or try again.
+                      {t("locationTimeout")}
                     </p>
                     <button
                       onClick={() => {
@@ -319,7 +318,7 @@ export function CheckoutPage() {
                       }}
                       className="mt-1 text-sm font-semibold text-brand"
                     >
-                      Try again
+                      {t("retry")}
                     </button>
                   </div>
                 )}
@@ -328,18 +327,18 @@ export function CheckoutPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Landmark / apartment</h2>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("landmarkTitle")}</h2>
             <textarea
               value={landmarkAddress}
               onChange={(e) => setLandmarkAddress(e.target.value)}
-              placeholder="e.g. Building 5, entrance 2, 3rd floor, apt 14"
+              placeholder={t("landmarkPlaceholder")}
               rows={2}
               className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
             />
           </section>
 
           <section>
-            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Notes for courier (optional)</h2>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("courierNotes")}</h2>
             <textarea
               value={courierNotes}
               onChange={(e) => setCourierNotes(e.target.value)}
@@ -349,14 +348,14 @@ export function CheckoutPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Payment</h2>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("payment")}</h2>
             {codBlocked && (
               <div className="mb-2 rounded-xl bg-red-50 px-3 py-2.5">
                 <p className="text-sm font-medium text-red-700">
-                  Cash on Delivery isn't available for this order right now.
+                  {t("codBlockedTitle")}
                 </p>
                 <p className="mt-1 text-xs text-red-600">
-                  Please call us and we'll sort it out —{" "}
+                  {t("codBlockedHelp")}{" "}
                   <a href={`tel:${RESTAURANT_PHONE.replace(/\s/g, "")}`} className="font-bold underline">
                     {RESTAURANT_PHONE}
                   </a>
@@ -386,7 +385,7 @@ export function CheckoutPage() {
                     </span>
                     {option.comingSoon && (
                       <span className="rounded-full bg-stone-200 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-stone-500">
-                        Coming soon
+                        {t("comingSoon")}
                       </span>
                     )}
                   </button>
@@ -397,14 +396,14 @@ export function CheckoutPage() {
             {paymentType === "CASH" && !user?.isPhoneVerified && (
               <div className="mt-3 rounded-xl bg-stone-100 p-3">
                 <p className="mb-2 text-sm text-stone-600">
-                  Share your Telegram contact to speed up Cash on Delivery verification.
+                  {t("sharePhonePrompt")}
                 </p>
                 <button
                   onClick={phoneVerification.verify}
                   disabled={phoneVerification.status === "requesting"}
                   className="w-full rounded-lg bg-brand/10 px-3 py-2 text-sm font-semibold text-brand"
                 >
-                  {phoneVerification.status === "requesting" ? "Waiting for Telegram…" : "📱 Share phone number"}
+                  {phoneVerification.status === "requesting" ? t("waitingTelegram") : t("sharePhone")}
                 </button>
                 {phoneVerification.error && (
                   <p className="mt-1 text-sm font-medium text-red-600">{phoneVerification.error}</p>
@@ -422,7 +421,7 @@ export function CheckoutPage() {
         disabled={!canSubmit}
         className="absolute inset-x-4 bottom-4 flex items-center justify-between rounded-2xl bg-brand px-5 py-3.5 font-semibold text-white shadow-lg shadow-brand/30 disabled:opacity-40"
       >
-        <span>{submitting ? "Placing order…" : "Place order"}</span>
+        <span>{submitting ? t("placingOrder") : t("placeOrder")}</span>
         <span>{formatSom(totalAmount)}</span>
       </button>
     </div>

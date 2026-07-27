@@ -10,22 +10,28 @@ export function googleMapsLink(lat: number, lng: number): string {
 }
 
 const PAYMENT_LABEL: Record<CourierAssignedData["paymentType"], string> = {
-  CASH: "Cash on Delivery",
+  CASH: "Naqd pul",
   CLICK: "Click",
   PAYME: "Payme",
 };
 
+function formatSom(amount: number): string {
+  return `${Math.round(amount)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ")} so'm`;
+}
+
 export function formatOrderCard(orderId: number, data: CourierAssignedData): string {
   const paymentLine =
     data.paymentStatus === "PAID"
-      ? `✅ Paid online via ${PAYMENT_LABEL[data.paymentType]}`
-      : `💵 Collect ${data.amountToCollect.toLocaleString("en-US")} UZS (${PAYMENT_LABEL[data.paymentType]})`;
+      ? `✅ Onlayn to'langan (${PAYMENT_LABEL[data.paymentType]})`
+      : `💵 Olinadigan summa: ${formatSom(data.amountToCollect)} (${PAYMENT_LABEL[data.paymentType]})`;
 
   const lines = [
-    `🚴 <b>New delivery — Order #${orderId}</b>`,
+    `🚴 <b>Yangi yetkazma — #${orderId}-buyurtma</b>`,
     "",
     `👤 ${data.customerName}`,
-    data.customerPhone ? `📞 ${data.customerPhone}` : "📞 Not verified — call before arrival if needed",
+    data.customerPhone ? `📞 ${data.customerPhone}` : "📞 Raqam tasdiqlanmagan — kerak bo'lsa yetib borishdan oldin qo'ng'iroq qiling",
     `📍 ${data.landmarkAddress}`,
     "",
     paymentLine,
@@ -40,7 +46,7 @@ export function orderKeyboard(orderId: number, latitude: number, longitude: numb
     .url("🗺 Yandex Maps", yandexMapsLink(latitude, longitude))
     .url("🗺 Google Maps", googleMapsLink(latitude, longitude))
     .row()
-    .text("🚴 On My Way", `on_my_way:${orderId}`)
+    .text("🚴 Yo'lga chiqdim", `on_my_way:${orderId}`)
     .row()
-    .text("✅ Delivered", `delivered:${orderId}`);
+    .text("✅ Yetkazdim", `delivered:${orderId}`);
 }

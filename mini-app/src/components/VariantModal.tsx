@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import type { Product } from "@mydoners/shared-contracts";
 import { formatSom } from "../lib/format";
+import { t } from "../i18n/strings";
 
 interface VariantModalProps {
   product: Product;
@@ -22,27 +23,27 @@ export function VariantModal({ product, onSelect, onClose }: VariantModalProps) 
     <div className="pointer-events-auto absolute inset-0 flex items-end justify-center bg-black/40" onClick={onClose}>
       <div className="w-full max-w-md rounded-t-2xl bg-white p-4 pb-6" onClick={(e) => e.stopPropagation()}>
         <h2 className="mb-1 text-lg font-bold text-stone-900">{product.name}</h2>
-        <p className="mb-4 text-sm text-stone-500">Choose your meat</p>
+        <p className="mb-4 text-sm text-stone-500">{t("chooseMeat")}</p>
 
         <div className="flex flex-col gap-2">
           <button
             onClick={() => onSelect("Beef")}
             className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3 text-left active:bg-stone-50"
           >
-            <span className="font-semibold text-stone-900">Beef</span>
+            <span className="font-semibold text-stone-900">{t("beef")}</span>
             <span className="font-semibold text-brand">{formatSom(Number(product.beefPrice))}</span>
           </button>
           <button
             onClick={() => onSelect("Chicken")}
             className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3 text-left active:bg-stone-50"
           >
-            <span className="font-semibold text-stone-900">Chicken</span>
+            <span className="font-semibold text-stone-900">{t("chicken")}</span>
             <span className="font-semibold text-brand">{formatSom(Number(product.chickenPrice))}</span>
           </button>
         </div>
 
         <button onClick={onClose} className="mt-4 w-full py-2 text-center text-sm font-medium text-stone-400">
-          Cancel
+          {t("cancel")}
         </button>
       </div>
     </div>,

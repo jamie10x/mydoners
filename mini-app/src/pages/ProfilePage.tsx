@@ -6,6 +6,7 @@ import { useUiStore } from "../store/uiStore";
 import { useSavedAddresses } from "../hooks/useSavedAddresses";
 import type { Coords } from "../components/MapPicker";
 import { normalizeUzPhone } from "../lib/phone";
+import { t } from "../i18n/strings";
 
 // See CheckoutPage.tsx — same code-splitting reasoning (MapLibre GL JS is
 // ~330KB gzipped, no reason to ship it on every screen that isn't the map).
@@ -54,7 +55,7 @@ export function ProfilePage() {
       updateUser(res.user);
       setProfileSaved(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.envelope.message : "Couldn't save your profile — try again.");
+      setError(err instanceof ApiError ? err.envelope.message : t("profileSaveFailed"));
     } finally {
       setSavingProfile(false);
     }
@@ -71,7 +72,7 @@ export function ProfilePage() {
       setNewLandmark("");
       setNewCoords(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.envelope.message : "Couldn't save that address — try again.");
+      setError(err instanceof ApiError ? err.envelope.message : t("saveAddressFailed"));
     } finally {
       setSavingAddress(false);
     }
@@ -88,7 +89,7 @@ export function ProfilePage() {
         >
           ←
         </button>
-        <h1 className="text-lg font-extrabold text-stone-900">Profile</h1>
+        <h1 className="text-lg font-extrabold text-stone-900">{t("profileTitle")}</h1>
       </header>
 
       <div className="flex flex-col gap-6 px-4 pt-4 pb-10">
@@ -98,27 +99,27 @@ export function ProfilePage() {
           </div>
           <div className="min-w-0">
             <p className="truncate font-extrabold text-stone-900">
-              {[user.firstName, user.lastName].filter(Boolean).join(" ") || "Add your name"}
+              {[user.firstName, user.lastName].filter(Boolean).join(" ") || t("addYourName")}
             </p>
             {user.username && <p className="truncate font-mono text-xs text-stone-400">@{user.username}</p>}
-            {user.isPhoneVerified && <p className="mt-1 text-xs font-semibold text-green-600">✓ Verified via Telegram</p>}
+            {user.isPhoneVerified && <p className="mt-1 text-xs font-semibold text-green-600">{t("verifiedViaTelegram")}</p>}
           </div>
         </div>
 
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Your details</h2>
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("yourDetails")}</h2>
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                placeholder="First name"
+                placeholder={t("firstNamePlaceholder")}
                 className="w-full min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
               />
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                placeholder="Last name"
+                placeholder={t("lastNamePlaceholder")}
                 className="w-full min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
               />
             </div>
@@ -133,7 +134,7 @@ export function ProfilePage() {
             />
             {phoneInvalid && (
               <p className="text-xs font-medium text-red-600">
-                Enter a valid Uzbek number — e.g. +998 90 123 45 67
+                {t("phoneInvalid")}
               </p>
             )}
             <button
@@ -141,16 +142,16 @@ export function ProfilePage() {
               disabled={savingProfile || phoneInvalid}
               className="rounded-xl bg-stone-900 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
             >
-              {savingProfile ? "Saving…" : "Save changes"}
+              {savingProfile ? t("saving") : t("saveChanges")}
             </button>
-            {profileSaved && <p className="text-xs font-semibold text-green-600">✓ Saved</p>}
+            {profileSaved && <p className="text-xs font-semibold text-green-600">{t("profileSaved")}</p>}
           </div>
         </section>
 
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-stone-400">Saved addresses</h2>
-            <span className="text-xs font-medium text-stone-400">{savedAddresses.addresses.length} of 3</span>
+            <h2 className="text-xs font-bold uppercase tracking-wide text-stone-400">{t("savedAddresses")}</h2>
+            <span className="text-xs font-medium text-stone-400">{t("addressCount", { count: savedAddresses.addresses.length })}</span>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -162,7 +163,7 @@ export function ProfilePage() {
                 onClick={savedAddresses.reload}
                 className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm font-semibold text-stone-500"
               >
-                Couldn't load your addresses — tap to retry
+                {t("addressesLoadFailed")}
               </button>
             )}
             {!savedAddresses.loading && savedAddresses.addresses.map((address) => (
@@ -181,20 +182,20 @@ export function ProfilePage() {
                   <button
                     onClick={() => {
                       setConfirmingRemoveId(null);
-                      savedAddresses.remove(address.id).catch(() => setError("Couldn't remove that address — try again."));
+                      savedAddresses.remove(address.id).catch(() => setError(t("removeAddressFailed")));
                     }}
                     onBlur={() => setConfirmingRemoveId(null)}
                     className="shrink-0 rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white"
                   >
-                    Confirm?
+                    {t("confirmRemove")}
                   </button>
                 ) : (
                   <button
                     onClick={() => setConfirmingRemoveId(address.id)}
                     className="shrink-0 text-xs font-semibold text-red-600"
-                    aria-label={`Remove address ${address.label}`}
+                    aria-label={t("removeAddressAria", { label: address.label })}
                   >
-                    Remove
+                    {t("remove")}
                   </button>
                 )}
               </div>
@@ -209,13 +210,13 @@ export function ProfilePage() {
                   <input
                     value={newLabel}
                     onChange={(e) => setNewLabel(e.target.value)}
-                    placeholder="Label — e.g. Home, Work"
+                    placeholder={t("addressLabelExample")}
                     className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
                   />
                   <textarea
                     value={newLandmark}
                     onChange={(e) => setNewLandmark(e.target.value)}
-                    placeholder="Landmark / apartment"
+                    placeholder={t("landmarkTitle")}
                     rows={2}
                     className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
                   />
@@ -224,14 +225,14 @@ export function ProfilePage() {
                       onClick={() => setAddingAddress(false)}
                       className="flex-1 rounded-lg border border-stone-200 py-2 text-sm font-semibold text-stone-600"
                     >
-                      Cancel
+                      {t("cancel")}
                     </button>
                     <button
                       onClick={confirmNewAddress}
                       disabled={savingAddress || !newCoords || !newLabel.trim() || !newLandmark.trim()}
                       className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-40"
                     >
-                      {savingAddress ? "Saving…" : "Save address"}
+                      {savingAddress ? t("saving") : t("saveAddress")}
                     </button>
                   </div>
                 </div>
@@ -240,7 +241,7 @@ export function ProfilePage() {
                   onClick={() => setAddingAddress(true)}
                   className="rounded-xl border border-dashed border-stone-300 py-2.5 text-sm font-semibold text-stone-500"
                 >
-                  + Add address
+                  {t("addAddress")}
                 </button>
               ))}
           </div>

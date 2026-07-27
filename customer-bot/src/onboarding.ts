@@ -35,13 +35,13 @@ async function isProfileComplete(telegramId: number): Promise<boolean> {
 }
 
 const phoneKeyboard = {
-  keyboard: [[{ text: "📱 Share phone number", request_contact: true }]],
+  keyboard: [[{ text: "📱 Telefon raqamni ulashish", request_contact: true }]],
   resize_keyboard: true,
   one_time_keyboard: true,
 };
 
 const locationKeyboard = {
-  keyboard: [[{ text: "📍 Share my location", request_location: true }]],
+  keyboard: [[{ text: "📍 Joylashuvimni ulashish", request_location: true }]],
   resize_keyboard: true,
   one_time_keyboard: true,
 };
@@ -57,7 +57,7 @@ export async function maybeStartOnboarding(telegramId: number, reply: (text: str
 
   state.set(telegramId, { step: "first_name" });
   await reply(
-    "Before your first order, let's set up your profile — takes 20 seconds, and you can skip any step by typing \"skip\".\n\nWhat's your first name?",
+    "Birinchi buyurtmadan oldin profilingizni to'ldiraylik — atigi 20 soniya vaqt oladi. Istalgan qadamni \"skip\" deb yozib o'tkazib yuborishingiz mumkin.\n\nIsmingiz nima?",
   );
   return true;
 }
@@ -77,7 +77,7 @@ export async function handleOnboardingText(telegramId: number, text: string, ctx
   if (current.step === "first_name") {
     if (!skip) current.firstName = trimmed;
     current.step = "last_name";
-    await ctx.reply(skip ? "No problem. Last name?" : "Nice to meet you! And your last name?");
+    await ctx.reply(skip ? "Mayli. Familiyangiz-chi?" : "Tanishganimizdan xursandmiz! Familiyangiz nima?");
     return true;
   }
 
@@ -90,14 +90,14 @@ export async function handleOnboardingText(telegramId: number, text: string, ctx
       }).catch(() => {});
     }
     current.step = "phone";
-    await ctx.reply("Now tap below to share your phone number, or type \"skip\".", phoneKeyboard);
+    await ctx.reply("Endi quyidagi tugma orqali telefon raqamingizni ulashing yoki \"skip\" deb yozing.", phoneKeyboard);
     return true;
   }
 
   if (current.step === "phone" && skip) {
     current.step = "location";
     await ctx.reply(
-      "No problem. Last step — share your current location so we know where to deliver, or type \"skip\".",
+      "Mayli. Oxirgi qadam — qayerga yetkazishimizni bilishimiz uchun joylashuvingizni ulashing yoki \"skip\" deb yozing.",
       locationKeyboard,
     );
     return true;
@@ -105,7 +105,7 @@ export async function handleOnboardingText(telegramId: number, text: string, ctx
 
   if (current.step === "location" && skip) {
     state.delete(telegramId);
-    await ctx.reply("All set! Tap below whenever you're ready to order.", { remove_keyboard: true });
+    await ctx.reply("Hammasi tayyor! Buyurtma bermoqchi bo'lganingizda quyidagi tugmani bosing.", { remove_keyboard: true });
     return true;
   }
 
@@ -128,7 +128,7 @@ export async function handleOnboardingContact(
 
   current.step = "location";
   await ctx.reply(
-    "Got it! Last step — share your current location so we know where to deliver, or type \"skip\".",
+    "Qabul qilindi! Oxirgi qadam — qayerga yetkazishimizni bilishimiz uchun joylashuvingizni ulashing yoki \"skip\" deb yozing.",
     locationKeyboard,
   );
   return true;
@@ -150,6 +150,6 @@ export async function handleOnboardingLocation(
   }).catch(() => {});
 
   state.delete(telegramId);
-  await ctx.reply("All set! Tap below whenever you're ready to order.", { remove_keyboard: true });
+  await ctx.reply("Hammasi tayyor! Buyurtma bermoqchi bo'lganingizda quyidagi tugmani bosing.", { remove_keyboard: true });
   return true;
 }

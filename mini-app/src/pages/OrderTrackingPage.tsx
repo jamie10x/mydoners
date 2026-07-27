@@ -5,12 +5,13 @@ import { useUiStore } from "../store/uiStore";
 import { useRealtimeOrder } from "../hooks/useRealtimeOrder";
 import { ErrorState } from "../components/ErrorState";
 import { formatSom } from "../lib/format";
+import { t, variantLabel } from "../i18n/strings";
 
 const STAGES: Array<{ label: string; statuses: OrderStatus[] }> = [
-  { label: "Order received", statuses: ["PENDING", "CONFIRMED"] },
-  { label: "Cooking in kitchen", statuses: ["COOKING"] },
-  { label: "Out for delivery", statuses: ["READY_FOR_DELIVERY", "ON_THE_WAY"] },
-  { label: "Delivered", statuses: ["DELIVERED"] },
+  { label: t("stageReceived"), statuses: ["PENDING", "CONFIRMED"] },
+  { label: t("stageCooking"), statuses: ["COOKING"] },
+  { label: t("stageOnTheWay"), statuses: ["READY_FOR_DELIVERY", "ON_THE_WAY"] },
+  { label: t("stageDelivered"), statuses: ["DELIVERED"] },
 ];
 
 function stageIndexFor(status: OrderStatus): number {
@@ -31,7 +32,7 @@ function OtpVerification({ orderId }: { orderId: number }) {
       await api.post(`/orders/${orderId}/otp/request`);
       setStep("requested");
     } catch (err) {
-      setError(err instanceof ApiError ? err.envelope.message : "Couldn't send the code — try again.");
+      setError(err instanceof ApiError ? err.envelope.message : t("otpSendFailed"));
     } finally {
       setBusy(false);
     }
@@ -44,33 +45,33 @@ function OtpVerification({ orderId }: { orderId: number }) {
       await api.post(`/orders/${orderId}/otp/verify`, { code });
       setStep("verified");
     } catch (err) {
-      setError(err instanceof ApiError ? err.envelope.message : "Invalid or expired code.");
+      setError(err instanceof ApiError ? err.envelope.message : t("otpInvalid"));
     } finally {
       setBusy(false);
     }
   }
 
   if (step === "verified") {
-    return <p className="rounded-xl bg-green-50 p-3 text-sm font-medium text-green-700">✅ Order verified via SMS.</p>;
+    return <p className="rounded-xl bg-green-50 p-3 text-sm font-medium text-green-700">{t("otpVerified")}</p>;
   }
 
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-      <p className="mb-2 text-sm font-semibold text-amber-800">Verify this order via SMS (optional)</p>
+      <p className="mb-2 text-sm font-semibold text-amber-800">{t("otpTitle")}</p>
       {step === "prompt" ? (
         <button
           onClick={requestCode}
           disabled={busy}
           className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white"
         >
-          {busy ? "Sending…" : "Send code"}
+          {busy ? t("otpSending") : t("otpSend")}
         </button>
       ) : (
         <div className="flex gap-2">
           <input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="6-digit code"
+            placeholder={t("otpPlaceholder")}
             className="min-w-0 flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm outline-none"
           />
           <button
@@ -78,7 +79,7 @@ function OtpVerification({ orderId }: { orderId: number }) {
             disabled={busy || code.length < 4}
             className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
-            Verify
+            {t("otpVerify")}
           </button>
         </div>
       )}
@@ -115,7 +116,7 @@ export function OrderTrackingPage() {
   if (!activeOrderId || loadState === "not-found") {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <p className="py-16 text-center text-sm font-medium text-stone-400">No active order.</p>
+        <p className="py-16 text-center text-sm font-medium text-stone-400">{t("noActiveOrder")}</p>
       </div>
     );
   }
@@ -124,7 +125,7 @@ export function OrderTrackingPage() {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto">
         <ErrorState
-          message="Couldn't load your order — check your connection."
+          message={t("orderLoadFailed")}
           onRetry={() => setReloadKey((k) => k + 1)}
         />
       </div>
@@ -145,12 +146,12 @@ export function OrderTrackingPage() {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto px-4 text-center">
         <p className="text-3xl">😔</p>
-        <p className="text-lg font-bold text-red-600">Order #{activeOrderId} was cancelled</p>
+        <p className="text-lg font-bold text-red-600">{t("orderCancelled", { id: activeOrderId })}</p>
         <button
           onClick={() => goTo("menu")}
           className="rounded-xl bg-brand px-5 py-2.5 font-semibold text-white shadow-lg shadow-brand/30"
         >
-          Back to menu
+          {t("backToMenu")}
         </button>
       </div>
     );
@@ -161,7 +162,7 @@ export function OrderTrackingPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pt-6 pb-10">
       <header>
-        <h1 className="text-lg font-extrabold text-stone-900">Order #{activeOrderId}</h1>
+        <h1 className="text-lg font-extrabold text-stone-900">{t("orderNumber", { id: activeOrderId })}</h1>
         <p className="text-sm font-medium text-stone-400">{formatSom(order.totalAmount)}</p>
       </header>
 
@@ -191,18 +192,18 @@ export function OrderTrackingPage() {
 
       {order.cashConfirmationCode && (liveStatus === "READY_FOR_DELIVERY" || liveStatus === "ON_THE_WAY") && (
         <div className="rounded-xl bg-stone-100 p-3 text-center">
-          <p className="text-sm font-medium text-stone-500">Give this code to your courier to confirm cash payment</p>
+          <p className="text-sm font-medium text-stone-500">{t("cashCodeHint")}</p>
           <p className="mt-1 text-3xl font-bold tracking-widest text-stone-900">{order.cashConfirmationCode}</p>
         </div>
       )}
 
       <div className="rounded-2xl border border-stone-100 bg-white p-3 shadow-sm">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">Items</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("itemsTitle")}</h2>
         {order.items.map((item) => (
           <div key={item.id} className="flex justify-between py-1 text-sm">
             <span className="text-stone-700">
               {item.quantity}× {item.productName}
-              {item.selectedVariant ? ` (${item.selectedVariant})` : ""}
+              {item.selectedVariant ? ` (${variantLabel(item.selectedVariant)})` : ""}
             </span>
             <span className="font-semibold text-stone-900">{formatSom(item.totalPrice)}</span>
           </div>
@@ -210,7 +211,7 @@ export function OrderTrackingPage() {
       </div>
 
       <button onClick={() => goTo("menu")} className="text-sm font-semibold text-stone-400 underline">
-        Order something else
+        {t("orderSomethingElse")}
       </button>
     </div>
   );
