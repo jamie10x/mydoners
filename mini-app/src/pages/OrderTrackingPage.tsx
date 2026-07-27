@@ -111,7 +111,7 @@ export function OrderTrackingPage() {
       });
   }, [activeOrderId, reloadKey]);
 
-  const liveStatus = useRealtimeOrder(activeOrderId, order?.status ?? "PENDING");
+  const { status: liveStatus, connected } = useRealtimeOrder(activeOrderId, order?.status ?? "PENDING");
 
   if (!activeOrderId || loadState === "not-found") {
     return (
@@ -165,6 +165,12 @@ export function OrderTrackingPage() {
         <h1 className="text-lg font-extrabold text-stone-900">{t("orderNumber", { id: activeOrderId })}</h1>
         <p className="text-sm font-medium text-stone-400">{formatSom(order.totalAmount)}</p>
       </header>
+
+      {!connected && (
+        <p className="-mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+          {t("reconnecting")}
+        </p>
+      )}
 
       <div className="flex flex-col gap-0 rounded-2xl border border-stone-100 bg-white p-4 shadow-sm">
         {STAGES.map((stage, index) => {

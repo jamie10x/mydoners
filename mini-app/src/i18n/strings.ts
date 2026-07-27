@@ -83,6 +83,7 @@ export const STR = {
   itemsTitle: "Mahsulotlar",
   orderSomethingElse: "Yana biror narsa buyurtma qilish",
   cashCodeHint: "Naqd to'lovni tasdiqlash uchun bu kodni kuryerga ayting",
+  reconnecting: "Aloqa tiklanmoqda — holat biroz kechikishi mumkin…",
   otpTitle: "Buyurtmani SMS orqali tasdiqlash (ixtiyoriy)",
   otpSend: "Kod yuborish",
   otpSending: "Yuborilmoqda…",
