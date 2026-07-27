@@ -37,7 +37,8 @@ class KdsViewModel(
 
     fun onAction(action: KdsAction) {
         when (action) {
-            is KdsAction.OnAcceptOrder -> transition(action.orderId, OrderStatus.COOKING, printOnSuccess = true)
+            is KdsAction.OnAcceptOrder -> transition(action.orderId, OrderStatus.CONFIRMED)
+            is KdsAction.OnStartCooking -> transition(action.orderId, OrderStatus.COOKING, printOnSuccess = true)
             is KdsAction.OnMarkReady -> transition(action.orderId, OrderStatus.READY_FOR_DELIVERY)
             is KdsAction.OnCancelOrder -> transition(action.orderId, OrderStatus.CANCELLED)
             KdsAction.OnRetryConnection -> loadActiveOrders()
@@ -114,9 +115,9 @@ class KdsViewModel(
         }
     }
 
-    /** Alarm rings as long as at least one order is CONFIRMED (needs acceptance) — stops the moment none are. */
+    /** Alarm rings as long as at least one order is PENDING (needs the kitchen's accept/reject) — stops the moment none are. */
     private fun syncAlert() {
-        val shouldAlert = _state.value.orders.any { it.status == OrderStatus.CONFIRMED }
+        val shouldAlert = _state.value.orders.any { it.status == OrderStatus.PENDING }
         if (shouldAlert) alertPlayer.start() else alertPlayer.stop()
         _state.update { it.copy(isAlerting = shouldAlert) }
     }
@@ -126,6 +127,7 @@ class KdsViewModel(
     }
 
     private companion object {
-        val ACTIVE_STATUSES = setOf(OrderStatus.CONFIRMED, OrderStatus.COOKING, OrderStatus.READY_FOR_DELIVERY)
+        val ACTIVE_STATUSES =
+            setOf(OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.COOKING, OrderStatus.READY_FOR_DELIVERY)
     }
 }

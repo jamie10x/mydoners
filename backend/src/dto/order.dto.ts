@@ -31,7 +31,3 @@ export const updateOrderStatusSchema = z.object({
 });
 
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
-
-export const verifyOtpSchema = z.object({
-  code: z.string().min(4).max(6),
-});

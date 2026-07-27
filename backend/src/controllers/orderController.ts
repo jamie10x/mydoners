@@ -2,8 +2,7 @@ import type { Request, Response } from "express";
 import type { OrderStatus } from "@mydoners/shared-contracts";
 import { orderService } from "../services/orderService";
 import { changedByFor } from "../domain/orderTransitions";
-import { otpService } from "../services/otpService";
-import { createOrderSchema, updateOrderStatusSchema, verifyOtpSchema } from "../dto/order.dto";
+import { createOrderSchema, updateOrderStatusSchema } from "../dto/order.dto";
 import { ForbiddenError, ValidationError } from "../errors/AppError";
 import { env } from "../config/env";
 
@@ -16,7 +15,7 @@ const VALID_STATUSES: OrderStatus[] = [
   "DELIVERED",
   "CANCELLED",
 ];
-const DEFAULT_ACTIVE_STATUSES: OrderStatus[] = ["CONFIRMED", "COOKING", "READY_FOR_DELIVERY"];
+const DEFAULT_ACTIVE_STATUSES: OrderStatus[] = ["PENDING", "CONFIRMED", "COOKING", "READY_FOR_DELIVERY"];
 
 function requireCourierBot(req: Request): void {
   if (!(req.actor?.type === "bot" && req.actor.bot === "courier")) {
@@ -99,22 +98,6 @@ export const orderController = {
   async getRisk(req: Request, res: Response) {
     const orderId = Number(req.params.orderId);
     res.json(await orderService.getRiskAssessment(orderId));
-  },
-
-  async requestOtp(req: Request, res: Response) {
-    const orderId = Number(req.params.orderId);
-    await otpService.requestOtp(orderId);
-    res.status(202).end();
-  },
-
-  async verifyOtp(req: Request, res: Response) {
-    const orderId = Number(req.params.orderId);
-    const parsed = verifyOtpSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Invalid OTP payload", { issues: parsed.error.issues });
-
-    const verified = await otpService.verifyOtp(orderId, parsed.data.code);
-    if (!verified) throw new ValidationError("Invalid or expired code", { orderId });
-    res.status(200).end();
   },
 
   async deliveryProof(req: Request, res: Response) {

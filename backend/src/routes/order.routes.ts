@@ -16,8 +16,6 @@ orderRoutes.post("/", requireAuth, asyncHandler(orderController.create));
 orderRoutes.get("/:orderId", requireAuth, asyncHandler(orderController.get));
 orderRoutes.patch("/:orderId/status", requireAuth, asyncHandler(orderController.updateStatus));
 orderRoutes.get("/:orderId/risk", requireAuth, asyncHandler(orderController.getRisk));
-orderRoutes.post("/:orderId/otp/request", requireAuth, asyncHandler(orderController.requestOtp));
-orderRoutes.post("/:orderId/otp/verify", requireAuth, asyncHandler(orderController.verifyOtp));
 orderRoutes.post(
   "/:orderId/delivery-proof",
   requireAuth,

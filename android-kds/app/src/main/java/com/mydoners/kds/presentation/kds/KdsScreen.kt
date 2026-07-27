@@ -131,6 +131,7 @@ private fun OrderGrid(orders: List<Order>, onAction: (KdsAction) -> Unit) {
             OrderCard(
                 order = order,
                 onAccept = { onAction(KdsAction.OnAcceptOrder(order.id)) },
+                onStartCooking = { onAction(KdsAction.OnStartCooking(order.id)) },
                 onMarkReady = { onAction(KdsAction.OnMarkReady(order.id)) },
                 onCancel = { onAction(KdsAction.OnCancelOrder(order.id)) },
             )

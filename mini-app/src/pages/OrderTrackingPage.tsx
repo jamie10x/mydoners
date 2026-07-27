@@ -11,7 +11,7 @@ import { formatSom } from "../lib/format";
 import { t, variantLabel } from "../i18n/strings";
 
 const STAGES: Array<{ label: string; statuses: OrderStatus[] }> = [
-  { label: t("stageReceived"), statuses: ["PENDING", "CONFIRMED"] },
+  { label: t("stageReceived"), statuses: ["CONFIRMED"] },
   { label: t("stageCooking"), statuses: ["COOKING"] },
   { label: t("stageOnTheWay"), statuses: ["READY_FOR_DELIVERY", "ON_THE_WAY"] },
   { label: t("stageDelivered"), statuses: ["DELIVERED"] },
@@ -19,76 +19,6 @@ const STAGES: Array<{ label: string; statuses: OrderStatus[] }> = [
 
 function stageIndexFor(status: OrderStatus): number {
   return STAGES.findIndex((stage) => stage.statuses.includes(status));
-}
-
-/** Optional self-service verification for MEDIUM-risk orders — doesn't gate cooking, see backend/src/services/orderService.ts. */
-function OtpVerification({ orderId }: { orderId: number }) {
-  const [step, setStep] = useState<"prompt" | "requested" | "verified">("prompt");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function requestCode() {
-    setBusy(true);
-    setError(null);
-    try {
-      await api.post(`/orders/${orderId}/otp/request`);
-      setStep("requested");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.envelope.message : t("otpSendFailed"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verifyCode() {
-    setBusy(true);
-    setError(null);
-    try {
-      await api.post(`/orders/${orderId}/otp/verify`, { code });
-      setStep("verified");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.envelope.message : t("otpInvalid"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (step === "verified") {
-    return <p className="rounded-xl bg-green-50 p-3 text-sm font-medium text-green-700">{t("otpVerified")}</p>;
-  }
-
-  return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-      <p className="mb-2 text-sm font-semibold text-amber-800">{t("otpTitle")}</p>
-      {step === "prompt" ? (
-        <button
-          onClick={requestCode}
-          disabled={busy}
-          className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white"
-        >
-          {busy ? t("otpSending") : t("otpSend")}
-        </button>
-      ) : (
-        <div className="flex gap-2">
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder={t("otpPlaceholder")}
-            className="min-w-0 flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm outline-none"
-          />
-          <button
-            onClick={verifyCode}
-            disabled={busy || code.length < 4}
-            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-          >
-            {t("otpVerify")}
-          </button>
-        </div>
-      )}
-      {error && <p className="mt-1 text-sm font-medium text-red-600">{error}</p>}
-    </div>
-  );
 }
 
 export function OrderTrackingPage() {
@@ -99,6 +29,9 @@ export function OrderTrackingPage() {
   const [loadState, setLoadState] = useState<"loading" | "loaded" | "not-found" | "error">("loading");
   const [reloadKey, setReloadKey] = useState(0);
   const [reordering, setReordering] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   // Only celebrate a DELIVERED status reached live during this visit —
   // revisiting an already-delivered order from history (see ProfilePage's
   // order history) must not replay the confetti every time.
@@ -167,6 +100,20 @@ export function OrderTrackingPage() {
     }
   }
 
+  async function cancelPendingOrder() {
+    if (!activeOrderId) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await api.patch(`/orders/${activeOrderId}/status`, { status: "CANCELLED", changedBy: "USER" });
+      setConfirmingCancel(false);
+    } catch (err) {
+      setCancelError(err instanceof ApiError ? err.envelope.message : t("cancelOrderFailed"));
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   if (!activeOrderId || loadState === "not-found") {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -192,6 +139,56 @@ export function OrderTrackingPage() {
         <div className="h-12 w-40 animate-pulse rounded-xl bg-stone-200/60" />
         <div className="h-56 animate-pulse rounded-2xl bg-stone-200/60" />
         <div className="h-32 animate-pulse rounded-2xl bg-stone-200/60" />
+      </div>
+    );
+  }
+
+  if (liveStatus === "PENDING") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-5 overflow-y-auto px-4 pb-10 pt-10 text-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 text-4xl">🧾</div>
+        <div>
+          <p className="text-xl font-extrabold text-stone-900">{t("pendingTitle")}</p>
+          <p className="mt-1 text-sm text-stone-500">{t("pendingSubtitle")}</p>
+        </div>
+
+        {!connected && (
+          <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{t("reconnecting")}</p>
+        )}
+
+        <div className="w-full rounded-2xl border border-stone-100 bg-white p-4 text-left shadow-sm">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("itemsTitle")}</h2>
+          {order.items.map((item) => (
+            <div key={item.id} className="flex justify-between py-1 text-sm">
+              <span className="text-stone-700">
+                {item.quantity}× {item.productName}
+                {item.selectedVariant ? ` (${variantLabel(item.selectedVariant)})` : ""}
+              </span>
+              <span className="font-semibold text-stone-900">{formatSom(item.totalPrice)}</span>
+            </div>
+          ))}
+          <div className="mt-2 flex justify-between border-t border-stone-100 pt-2 text-sm font-bold text-stone-900">
+            <span>{t("receiptTotal")}</span>
+            <span>{formatSom(order.totalAmount)}</span>
+          </div>
+        </div>
+
+        {cancelError && <p className="text-sm font-medium text-red-600">{cancelError}</p>}
+
+        {confirmingCancel ? (
+          <button
+            onClick={cancelPendingOrder}
+            disabled={cancelling}
+            onBlur={() => setConfirmingCancel(false)}
+            className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {cancelling ? t("cancelling") : t("confirmRemove")}
+          </button>
+        ) : (
+          <button onClick={() => setConfirmingCancel(true)} className="text-sm font-semibold text-red-600 underline">
+            {t("cancelOrder")}
+          </button>
+        )}
       </div>
     );
   }
@@ -290,8 +287,6 @@ export function OrderTrackingPage() {
           );
         })}
       </div>
-
-      {order.riskLevel === "MEDIUM" && <OtpVerification orderId={activeOrderId} />}
 
       {order.cashConfirmationCode && (liveStatus === "READY_FOR_DELIVERY" || liveStatus === "ON_THE_WAY") && (
         <div className="rounded-xl bg-stone-100 p-3 text-center">

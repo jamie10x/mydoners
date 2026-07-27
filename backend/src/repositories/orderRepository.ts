@@ -14,11 +14,11 @@ export interface NewOrderItemInput {
 
 export interface NewOrderInput {
   userId: number;
-  // Phase 1 has no anti-fraud gate, so orders are created straight into
-  // CONFIRMED. Phase 2's risk-scoring service will pass "PENDING" here
-  // instead when a MEDIUM/HIGH-risk order needs to hold before the kitchen
-  // sees it (OTP / verbal confirmation) — see docs/decisions.md and the
-  // roadmap's Phase 2 section.
+  // Always "PENDING" in practice (see orderService.createOrder) — every
+  // order waits for the kitchen to accept it after checking stock before
+  // the customer sees any progress. Kept as a plain OrderStatus param
+  // rather than hardcoding PENDING here so orderRepository.create stays a
+  // dumb insert with no opinion about ordering rules.
   status: OrderStatus;
   totalAmount: number;
   paymentType: PaymentType;

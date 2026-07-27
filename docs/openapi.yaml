@@ -253,40 +253,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/RiskAssessment"
 
-  /orders/{orderId}/otp/request:
-    post:
-      tags: [anti-fraud]
-      summary: Trigger an SMS OTP for a MEDIUM-risk CoD order
-      description: Phase 2. Provider-agnostic — see docs/decisions.md #2.
-      parameters:
-        - $ref: "#/components/parameters/OrderIdParam"
-      responses:
-        "202":
-          description: OTP dispatched
-
-  /orders/{orderId}/otp/verify:
-    post:
-      tags: [anti-fraud]
-      summary: Verify an SMS OTP code for a MEDIUM-risk CoD order
-      parameters:
-        - $ref: "#/components/parameters/OrderIdParam"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [code]
-              properties:
-                code:
-                  type: string
-                  minLength: 4
-                  maxLength: 6
-      responses:
-        "200":
-          description: OTP verified — order proceeds to kitchen
-        "400":
-          description: Invalid or expired code
 
   /orders/{orderId}/dispatch:
     patch:

@@ -18,7 +18,7 @@ class OrderApi(private val httpClient: HttpClient) {
 
     suspend fun fetchActiveOrders(): Result<List<OrderDto>, DataError.Network> = safeCall {
         httpClient.get("/orders") {
-            parameter("status", "CONFIRMED,COOKING,READY_FOR_DELIVERY")
+            parameter("status", "PENDING,CONFIRMED,COOKING,READY_FOR_DELIVERY")
         }
     }
 

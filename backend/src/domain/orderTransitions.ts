@@ -21,7 +21,8 @@ export const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
  * orders.
  *
  * - customer: cancel their OWN order, only before cooking starts
- * - KDS device: everything the kitchen does, incl. cancels up to dispatch
+ * - KDS device: everything the kitchen does — approving a pending order
+ *   (after checking stock), cooking, dispatch, and cancels up to dispatch
  * - courier bot: pick-up and delivery steps only
  * - customer bot: no order transitions at all
  */
@@ -36,6 +37,7 @@ export function actorMayTransition(
       return to === "CANCELLED" && (from === "PENDING" || from === "CONFIRMED") && actor.telegramId === orderUserId;
     case "device":
       return (
+        (from === "PENDING" && to === "CONFIRMED") ||
         (from === "CONFIRMED" && to === "COOKING") ||
         (from === "COOKING" && to === "READY_FOR_DELIVERY") ||
         (to === "CANCELLED" && from !== "ON_THE_WAY" && from !== "DELIVERED")

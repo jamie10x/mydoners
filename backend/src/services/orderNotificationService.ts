@@ -18,6 +18,9 @@ const trackOrderButton = {
 };
 
 const STATUS_MESSAGES: Partial<Record<OrderStatus, string>> = {
+  // Kitchen tapped Accept after checking stock — this is the real "your
+  // order is happening" moment now that every order starts PENDING.
+  CONFIRMED: "✅ #{id}-buyurtmangiz tasdiqlandi — tayyorlanish boshlanmoqda!",
   COOKING: "🍳 #{id}-buyurtmangiz oshxonada tayyorlanmoqda.",
   READY_FOR_DELIVERY: "📦 #{id}-buyurtmangiz tayyor — kuryer kutilmoqda.",
   ON_THE_WAY: "🚴 #{id}-buyurtmangiz yo'lda!",
@@ -30,13 +33,13 @@ export const orderNotificationService = {
     const text =
       `🌯 <b>#${order.id}-buyurtmangiz qabul qilindi!</b>\n` +
       `Jami: ${formatSom(order.totalAmount)}\n\n` +
-      `Buyurtma holati o'zgarganda sizga shu yerda xabar beramiz.`;
+      `Restoran hozir ko'rib chiqmoqda — tasdiqlanishi bilan sizga xabar beramiz.`;
     await sendTelegramMessage(telegramId, text, { parseMode: "HTML", replyMarkup: trackOrderButton });
   },
 
   async notifyStatusChange(telegramId: number, order: Order, status: OrderStatus): Promise<void> {
     const template = STATUS_MESSAGES[status];
-    if (!template) return; // PENDING/CONFIRMED are covered by the "received" message
+    if (!template) return; // PENDING is covered by the "received" message above
     const text = template.replace("{id}", String(order.id));
     await sendTelegramMessage(telegramId, text, { replyMarkup: trackOrderButton });
   },

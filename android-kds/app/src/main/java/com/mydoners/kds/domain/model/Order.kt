@@ -49,6 +49,7 @@ data class Order(
  * (not the courier or customer) can trigger.
  */
 fun OrderStatus.nextKitchenAction(): OrderStatus? = when (this) {
+    OrderStatus.PENDING -> OrderStatus.CONFIRMED
     OrderStatus.CONFIRMED -> OrderStatus.COOKING
     OrderStatus.COOKING -> OrderStatus.READY_FOR_DELIVERY
     else -> null

@@ -31,6 +31,7 @@ import com.mydoners.kds.presentation.theme.KdsWarning
 fun OrderCard(
     order: Order,
     onAccept: () -> Unit,
+    onStartCooking: () -> Unit,
     onMarkReady: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
@@ -116,11 +117,17 @@ fun OrderCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 when (order.status) {
-                    OrderStatus.CONFIRMED -> Button(
+                    OrderStatus.PENDING -> Button(
                         onClick = onAccept,
                         modifier = Modifier.fillMaxWidth(0.6f),
                         colors = ButtonDefaults.buttonColors(containerColor = KdsSuccess),
-                    ) { Text("ACCEPT & COOK", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text("ACCEPT ORDER", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+
+                    OrderStatus.CONFIRMED -> Button(
+                        onClick = onStartCooking,
+                        modifier = Modifier.fillMaxWidth(0.6f),
+                        colors = ButtonDefaults.buttonColors(containerColor = KdsSuccess),
+                    ) { Text("START COOKING", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 
                     OrderStatus.COOKING -> Button(
                         onClick = onMarkReady,
@@ -132,7 +139,7 @@ fun OrderCard(
                 }
 
                 OutlinedButton(onClick = onCancel) {
-                    Text("Cancel", fontSize = 16.sp)
+                    Text(if (order.status == OrderStatus.PENDING) "Reject" else "Cancel", fontSize = 16.sp)
                 }
             }
         }
@@ -142,7 +149,8 @@ fun OrderCard(
 @Composable
 private fun StatusBadge(status: OrderStatus) {
     val (label, color) = when (status) {
-        OrderStatus.CONFIRMED -> "NEW" to MaterialTheme.colorScheme.primary
+        OrderStatus.PENDING -> "NEW" to MaterialTheme.colorScheme.primary
+        OrderStatus.CONFIRMED -> "ACCEPTED" to KdsSuccess
         OrderStatus.COOKING -> "COOKING" to KdsWarning
         OrderStatus.READY_FOR_DELIVERY -> "READY" to KdsSuccess
         else -> status.name to Color.Gray

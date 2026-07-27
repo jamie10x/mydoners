@@ -158,15 +158,17 @@ export const orderService = {
       riskLevel = assessment.riskLevel;
     }
 
-    // No PENDING hold for MEDIUM risk — the order goes straight to the
-    // kitchen either way. OTP / verbal confirmation (KDS badge) are
-    // verification signals layered on top, not a gate on cooking start;
-    // see docs/decisions.md's Phase 2 notes for why.
+    // Every order starts PENDING: the kitchen reviews stock and taps Accept
+    // (PENDING → CONFIRMED, see domain/orderTransitions.ts) before the
+    // customer sees any progress. HIGH-risk CoD orders never reach this —
+    // they're blocked above; MEDIUM-risk still lands here same as everyone
+    // else, with the risk badge as extra context for the kitchen's review
+    // rather than a separate customer-facing verification step.
     let orderId: number;
     try {
       orderId = await orderRepository.create({
         userId: telegramId,
-        status: "CONFIRMED",
+        status: "PENDING",
         totalAmount,
         paymentType: input.paymentType,
         latitude: input.latitude,
