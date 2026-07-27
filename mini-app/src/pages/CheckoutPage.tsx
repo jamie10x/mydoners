@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { Order, PaymentType } from "@mydoners/shared-contracts";
 import { api, ApiError } from "../api/client";
 import { useCartStore } from "../store/cartStore";
@@ -8,8 +8,13 @@ import { useCheckoutStore } from "../store/checkoutStore";
 import { usePhoneVerification } from "../hooks/usePhoneVerification";
 import { useTelegramLocationFallback } from "../hooks/useTelegramLocationFallback";
 import { useSavedAddresses } from "../hooks/useSavedAddresses";
-import { MapPicker, type Coords, type GeoStatus } from "../components/MapPicker";
+import type { Coords, GeoStatus } from "../components/MapPicker";
 import { formatSom } from "../lib/format";
+
+// MapLibre GL JS is ~330KB gzipped — code-split so it's not part of the
+// initial Menu bundle, only fetched once someone actually reaches checkout.
+const MapPicker = lazy(() => import("../components/MapPicker").then((m) => ({ default: m.MapPicker })));
+const MapPickerFallback = () => <div className="h-48 animate-pulse rounded-2xl bg-stone-200/60" />;
 
 const PAYMENT_OPTIONS: Array<{ value: PaymentType; label: string; icon: string; comingSoon?: boolean }> = [
   { value: "CASH", label: "Cash on Delivery", icon: "💵" },
@@ -209,7 +214,9 @@ export function CheckoutPage() {
               </div>
             )}
 
-            <MapPicker coords={coords} onChange={handleMapChange} onStatusChange={setGeoStatus} />
+            <Suspense fallback={<MapPickerFallback />}>
+              <MapPicker coords={coords} onChange={handleMapChange} onStatusChange={setGeoStatus} />
+            </Suspense>
 
             {coords && !selectedAddressId && landmarkAddress.trim().length > 0 && savedAddresses.addresses.length < 3 && (
               <div className="mt-2">

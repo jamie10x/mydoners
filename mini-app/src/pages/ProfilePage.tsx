@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import type { PublicUser } from "@mydoners/shared-contracts";
 import { api, ApiError } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { useUiStore } from "../store/uiStore";
 import { useSavedAddresses } from "../hooks/useSavedAddresses";
-import { MapPicker, type Coords } from "../components/MapPicker";
+import type { Coords } from "../components/MapPicker";
+
+// See CheckoutPage.tsx — same code-splitting reasoning (MapLibre GL JS is
+// ~330KB gzipped, no reason to ship it on every screen that isn't the map).
+const MapPicker = lazy(() => import("../components/MapPicker").then((m) => ({ default: m.MapPicker })));
+const MapPickerFallback = () => <div className="h-48 animate-pulse rounded-2xl bg-stone-200/60" />;
 
 const ADDRESS_ICONS: Record<string, string> = { Home: "🏠", Work: "🏢" };
 
@@ -160,7 +165,9 @@ export function ProfilePage() {
             {savedAddresses.addresses.length < 3 &&
               (addingAddress ? (
                 <div className="rounded-xl border border-stone-200 p-3">
-                  <MapPicker coords={newCoords} onChange={setNewCoords} />
+                  <Suspense fallback={<MapPickerFallback />}>
+                    <MapPicker coords={newCoords} onChange={setNewCoords} />
+                  </Suspense>
                   <input
                     value={newLabel}
                     onChange={(e) => setNewLabel(e.target.value)}
