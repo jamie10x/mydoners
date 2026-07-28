@@ -24,6 +24,7 @@ import com.mydoners.kds.presentation.kds.KdsRoot
 import com.mydoners.kds.presentation.kds.KdsViewModel
 import com.mydoners.kds.presentation.sales.SalesRoot
 import com.mydoners.kds.presentation.theme.MyDonersKdsTheme
+import com.mydoners.kds.presentation.theme.ThemeViewModel
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -38,14 +39,23 @@ fun KdsApp() {
     // the other screens can all surface into the same snackbar host.
     val kdsViewModel: KdsViewModel = koinViewModel()
     val kdsState by kdsViewModel.state.collectAsStateWithLifecycle()
+    val themeViewModel: ThemeViewModel = koinViewModel()
+    val isDarkTheme by themeViewModel.isDarkTheme.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: KdsRoute.Orders.route
 
-    MyDonersKdsTheme {
+    MyDonersKdsTheme(darkTheme = isDarkTheme) {
         Scaffold(
-            topBar = { KdsTopBar(isConnected = kdsState.isConnected, todaySummary = kdsState.todaySummary) },
+            topBar = {
+                KdsTopBar(
+                    isConnected = kdsState.isConnected,
+                    todaySummary = kdsState.todaySummary,
+                    isDarkTheme = isDarkTheme,
+                    onToggleTheme = themeViewModel::toggleTheme,
+                )
+            },
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { padding ->
             Row(modifier = Modifier.fillMaxSize().padding(padding)) {
