@@ -154,6 +154,11 @@ export function CheckoutPage() {
         courierNotes: courierNotes.trim() || null,
         customerName: customerName.trim(),
         customerPhone: normalizedPhone,
+        // Which saved address (if any) they picked — kitchen-facing context
+        // only, see KDS's expanded order card. Null for an ad-hoc pin drop.
+        addressLabel: selectedAddressId
+          ? (savedAddresses.addresses.find((a) => a.id === selectedAddressId)?.label ?? null)
+          : null,
         // Same key across retries of this checkout — the backend returns
         // the already-created order instead of making a duplicate.
         idempotencyKey: useCheckoutStore.getState().ensureIdempotencyKey(),

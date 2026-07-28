@@ -32,6 +32,7 @@ class KdsViewModel(
 
     init {
         loadActiveOrders()
+        loadTodaySummary()
         observeRealtime()
     }
 
@@ -57,6 +58,17 @@ class KdsViewModel(
                     _state.update { it.copy(isLoading = false) }
                     _events.send(KdsEvent.ShowError("Couldn't load orders: $error"))
                 }
+        }
+    }
+
+    // Best-effort ambient stat — failures are silently ignored (the top bar
+    // just shows nothing) rather than surfaced as an error banner; this is
+    // background context, not something that blocks kitchen work.
+    private fun loadTodaySummary() {
+        viewModelScope.launch {
+            orderRepository.fetchTodaySummary().onSuccess { summary ->
+                _state.update { it.copy(todaySummary = summary) }
+            }
         }
     }
 
@@ -90,6 +102,7 @@ class KdsViewModel(
                     current.copy(orders = if (isActive) withoutOrder + order else withoutOrder)
                 }
                 syncAlert()
+                loadTodaySummary()
             }
         }
     }
@@ -97,6 +110,7 @@ class KdsViewModel(
     private fun removeOrder(orderId: Int) {
         _state.update { it.copy(orders = it.orders.filterNot { order -> order.id == orderId }) }
         syncAlert()
+        loadTodaySummary()
     }
 
     private fun transition(orderId: Int, newStatus: OrderStatus, printOnSuccess: Boolean = false) {
@@ -109,6 +123,7 @@ class KdsViewModel(
                         current.copy(orders = if (isActive) withoutOrder + order else withoutOrder)
                     }
                     syncAlert()
+                    loadTodaySummary()
                     if (printOnSuccess) thermalPrinter.printReceipt(order)
                 }
                 .onFailure { error -> _events.send(KdsEvent.ShowError("Update failed: $error")) }

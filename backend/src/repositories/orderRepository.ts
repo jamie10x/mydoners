@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "../db";
 import { orderItems, orderLogs, orders, products } from "../db/schema";
 import type { ChangedBy, OrderStatus, PaymentType, RiskLevel } from "@mydoners/shared-contracts";
@@ -29,6 +29,8 @@ export interface NewOrderInput {
   riskLevel: RiskLevel;
   customerName: string;
   customerPhone: string;
+  customerTelegramUsername: string | null;
+  addressLabel: string | null;
   idempotencyKey: string | null;
   items: NewOrderItemInput[];
 }
@@ -51,6 +53,8 @@ export const orderRepository = {
           riskLevel: input.riskLevel,
           customerName: input.customerName,
           customerPhone: input.customerPhone,
+          customerTelegramUsername: input.customerTelegramUsername,
+          addressLabel: input.addressLabel,
           idempotencyKey: input.idempotencyKey,
         })
         .returning();
@@ -108,6 +112,43 @@ export const orderRepository = {
       .select()
       .from(orders)
       .where(inArray(orders.status, statuses))
+      .orderBy(desc(orders.createdAt));
+
+    if (matchingOrders.length === 0) return [];
+
+    const orderIds = matchingOrders.map((o) => o.id);
+    const items = await db
+      .select({
+        id: orderItems.id,
+        orderId: orderItems.orderId,
+        productId: orderItems.productId,
+        productName: products.name,
+        selectedVariant: orderItems.selectedVariant,
+        quantity: orderItems.quantity,
+        unitPrice: orderItems.unitPrice,
+        totalPrice: orderItems.totalPrice,
+      })
+      .from(orderItems)
+      .innerJoin(products, eq(orderItems.productId, products.id))
+      .where(inArray(orderItems.orderId, orderIds));
+
+    return matchingOrders.map((order) => ({
+      order,
+      items: items.filter((item) => item.orderId === order.id),
+    }));
+  },
+
+  // Backs both KDS's lightweight "today" views (History, Sales) and the
+  // admin dashboard's date-range reporting — one flexible query rather than
+  // near-duplicate ones for each caller. `statuses: null` means "any status".
+  async listByDateRange(from: Date, to: Date, statuses: OrderStatus[] | null) {
+    const conditions = [gte(orders.createdAt, from), lte(orders.createdAt, to)];
+    if (statuses) conditions.push(inArray(orders.status, statuses));
+
+    const matchingOrders = await db
+      .select()
+      .from(orders)
+      .where(and(...conditions))
       .orderBy(desc(orders.createdAt));
 
     if (matchingOrders.length === 0) return [];

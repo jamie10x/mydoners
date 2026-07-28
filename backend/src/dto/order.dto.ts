@@ -18,6 +18,9 @@ export const createOrderSchema = z.object({
   courierNotes: z.string().nullable().optional(),
   customerName: z.string().min(1),
   customerPhone: z.string().min(5),
+  // Which saved address (Home/Work/custom) the customer picked, if any —
+  // omitted/undefined for an ad-hoc pin drop. Kitchen-facing context only.
+  addressLabel: z.string().max(100).nullable().optional(),
   // Client-generated UUID — makes retried submissions return the existing
   // order instead of creating a duplicate. Optional for older clients.
   idempotencyKey: z.string().min(8).max(64).optional(),

@@ -36,11 +36,28 @@ data class Order(
     val totalAmount: Double,
     val paymentType: PaymentType,
     val paymentStatus: PaymentStatus,
+    val latitude: Double,
+    val longitude: Double,
     val landmarkAddress: String,
     val courierNotes: String?,
+    // Snapshotted at checkout on the backend — see backend/src/db/schema.ts.
+    // Expanded-card-only context; no business logic depends on these.
+    val customerName: String?,
+    val customerPhone: String?,
+    val customerTelegramUsername: String?,
+    val addressLabel: String?,
     val riskLevel: RiskLevel?,
     val createdAt: String,
 )
+
+/** Backs the Sales screen and the top bar's ambient today-strip — see GET /orders/today-summary. */
+data class SalesSummary(
+    val orderCount: Int,
+    val revenue: Double,
+    val topItems: List<TopItem>,
+)
+
+data class TopItem(val productName: String, val quantity: Int)
 
 /**
  * Statuses the KDS's own action buttons are allowed to move an order

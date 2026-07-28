@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
+import type { OrderStatus } from "@mydoners/shared-contracts";
 import { adminService } from "../services/adminService";
+import { orderService } from "../services/orderService";
 import { checkAdminPassword, signAdminToken } from "../middleware/adminAuth";
 import { env } from "../config/env";
 import {
@@ -10,6 +12,34 @@ import {
   productUpdateSchema,
 } from "../dto/admin.dto";
 import { UnauthorizedError, ValidationError } from "../errors/AppError";
+
+const VALID_ORDER_STATUSES: OrderStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "COOKING",
+  "READY_FOR_DELIVERY",
+  "ON_THE_WAY",
+  "DELIVERED",
+  "CANCELLED",
+];
+
+// Shared by /admin/analytics and /admin/orders — defaults to the last 30
+// days so the dashboard shows something sensible on first load, before the
+// owner has picked a range.
+function parseDateRange(query: Request["query"]): { from: Date; to: Date } {
+  const to = query.to ? new Date(String(query.to)) : new Date();
+  const from = query.from
+    ? new Date(String(query.from))
+    : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    throw new ValidationError("Invalid from/to date", { from: query.from, to: query.to });
+  }
+  // Inclusive of the whole "to" day when it's a bare date (e.g. "2026-07-28").
+  if (typeof query.to === "string" && /^\d{4}-\d{2}-\d{2}$/.test(query.to)) {
+    to.setHours(23, 59, 59, 999);
+  }
+  return { from, to };
+}
 
 export const adminController = {
   async login(req: Request, res: Response) {
@@ -67,5 +97,29 @@ export const adminController = {
     const imageUrl = `${env.publicApiUrl}/uploads/products/${file.filename}`;
     const product = await adminService.updateProduct(Number(req.params.productId), { imageUrl });
     res.json(product);
+  },
+
+  // Dashboard's summary card — revenue/order count/top products for a
+  // date range (defaults to the last 30 days).
+  async analytics(req: Request, res: Response) {
+    const { from, to } = parseDateRange(req.query);
+    res.json(await orderService.getSalesSummary(from, to));
+  },
+
+  // Dashboard's filterable order-history table.
+  async orders(req: Request, res: Response) {
+    const { from, to } = parseDateRange(req.query);
+
+    const statusParam = req.query.status;
+    const statuses = typeof statusParam === "string" ? statusParam.split(",") : null;
+    if (statuses && statuses.some((s) => !VALID_ORDER_STATUSES.includes(s as OrderStatus))) {
+      throw new ValidationError("Invalid status value in query param", { status: statusParam });
+    }
+
+    const allMatching = await orderService.listOrdersInRange(from, to, statuses as OrderStatus[] | null);
+
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    res.json({ total: allMatching.length, orders: allMatching.slice(offset, offset + limit) });
   },
 };

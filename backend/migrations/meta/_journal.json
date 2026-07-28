@@ -50,6 +50,13 @@
       "when": 1785147547224,
       "tag": "0006_dazzling_mulholland_black",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785216731802,
+      "tag": "0007_faithful_solo",
+      "breakpoints": true
     }
   ]
 }

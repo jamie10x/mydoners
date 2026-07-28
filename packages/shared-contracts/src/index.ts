@@ -51,11 +51,21 @@ export interface Order {
   courierNotes: string | null;
   customerName: string | null;
   customerPhone: string | null;
+  customerTelegramUsername: string | null;
+  addressLabel: string | null;
   riskLevel: RiskLevel;
   cashConfirmationCode: string | null;
   deliveryProofPhotoUrl: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// Backs KDS's lightweight "Today's Sales" screen and the admin dashboard's
+// per-period summary card — see backend/src/services/orderService.ts.
+export interface SalesSummary {
+  orderCount: number;
+  revenue: number;
+  topItems: Array<{ productName: string; quantity: number }>;
 }
 
 // WebSocket envelope + event data shapes — see docs/websocket-events.md

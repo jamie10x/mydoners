@@ -23,3 +23,6 @@ adminRoutes.post(
   productImageUpload.single("image"),
   asyncHandler(adminController.uploadProductImage),
 );
+
+adminRoutes.get("/analytics", requireAdmin, asyncHandler(adminController.analytics));
+adminRoutes.get("/orders", requireAdmin, asyncHandler(adminController.orders));

@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
 
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
@@ -88,4 +89,7 @@ dependencies {
     implementation(libs.socketio.client)
 
     implementation(libs.datastore.preferences)
+
+    implementation(libs.navigation.compose)
+    implementation(libs.maplibre.android)
 }

@@ -3,13 +3,14 @@ import { useAuthStore } from "./store/authStore";
 import { LoginPage } from "./pages/LoginPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { ProductsPage } from "./pages/ProductsPage";
+import { DashboardPage } from "./pages/DashboardPage";
 
-type Tab = "categories" | "products";
+type Tab = "dashboard" | "categories" | "products";
 
 export function App() {
   const token = useAuthStore((s) => s.token);
   const clearToken = useAuthStore((s) => s.clearToken);
-  const [tab, setTab] = useState<Tab>("products");
+  const [tab, setTab] = useState<Tab>("dashboard");
 
   if (!token) return <LoginPage />;
 
@@ -21,7 +22,7 @@ export function App() {
             <img src="/logo.svg" alt="" className="h-9 w-9 rounded-lg" />
             <div>
               <h1 className="text-base font-extrabold leading-tight text-stone-900">MyDoners Admin</h1>
-              <p className="text-xs text-stone-400">Menu management</p>
+              <p className="text-xs text-stone-400">Sales & menu management</p>
             </div>
           </div>
           <button
@@ -35,6 +36,14 @@ export function App() {
 
       <div className="mx-auto max-w-5xl px-6">
         <nav className="flex gap-2 pt-5">
+          <button
+            onClick={() => setTab("dashboard")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+              tab === "dashboard" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
+            }`}
+          >
+            Dashboard
+          </button>
           <button
             onClick={() => setTab("products")}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
@@ -53,7 +62,9 @@ export function App() {
           </button>
         </nav>
 
-        <main className="py-6">{tab === "products" ? <ProductsPage /> : <CategoriesPage />}</main>
+        <main className="py-6">
+          {tab === "dashboard" ? <DashboardPage /> : tab === "products" ? <ProductsPage /> : <CategoriesPage />}
+        </main>
       </div>
     </div>
   );

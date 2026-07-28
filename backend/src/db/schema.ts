@@ -80,6 +80,14 @@ export const orders = pgTable("orders", {
   // Nullable only because orders placed before this field existed have none.
   customerName: varchar("customer_name", { length: 200 }),
   customerPhone: varchar("customer_phone", { length: 20 }),
+  // Same snapshot reasoning as customerName/customerPhone — taken from the
+  // users row at order-creation time (usernames change; this is what it was
+  // when the order was placed). Nullable: the account may have no username.
+  customerTelegramUsername: varchar("customer_telegram_username", { length: 100 }),
+  // Which saved address (Home/Work/custom) the customer picked at checkout,
+  // if any — null means they dropped an ad-hoc pin instead. Kitchen-facing
+  // context only (KDS's expanded order card); not used by any business logic.
+  addressLabel: varchar("address_label", { length: 100 }),
   riskLevel: varchar("risk_level", { length: 10 }), // LOW | MEDIUM | HIGH | null — Phase 2
   // Phase 2 — courier delivery-proof flow. Code is generated when an order
   // becomes READY_FOR_DELIVERY for CASH orders; courier must have the

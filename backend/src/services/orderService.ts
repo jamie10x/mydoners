@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import type { ChangedBy, CourierAssignedData, Order, OrderStatus } from "@mydoners/shared-contracts";
+import type { ChangedBy, CourierAssignedData, Order, OrderStatus, SalesSummary } from "@mydoners/shared-contracts";
 import { orderRepository, type NewOrderItemInput } from "../repositories/orderRepository";
 import { productRepository } from "../repositories/productRepository";
 import { userRepository } from "../repositories/userRepository";
@@ -49,6 +49,8 @@ function toApiOrder(order: OrderRow, items: OrderItemRow[]): Order {
     courierNotes: order.courierNotes,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
+    customerTelegramUsername: order.customerTelegramUsername,
+    addressLabel: order.addressLabel,
     riskLevel: order.riskLevel as Order["riskLevel"],
     cashConfirmationCode: order.cashConfirmationCode,
     deliveryProofPhotoUrl: order.deliveryProofPhotoUrl,
@@ -67,6 +69,25 @@ function generateCashConfirmationCode(): string {
 // generous for honest typos, useless for brute force against 10k codes.
 const MAX_CASH_CODE_ATTEMPTS = 5;
 const cashCodeAttemptsKey = (orderId: number) => `cashcode:attempts:${orderId}`;
+
+// "Business happening today" for KDS's ambient today-strip and history —
+// counts everything except orders that were rejected/cancelled, including
+// ones still in flight (not just DELIVERED), since a kitchen glancing at
+// "today" wants a sense of total volume, not just fully-closed revenue.
+const NON_CANCELLED_STATUSES: OrderStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "COOKING",
+  "READY_FOR_DELIVERY",
+  "ON_THE_WAY",
+  "DELIVERED",
+];
+
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 type UserRow = Awaited<ReturnType<typeof userRepository.findByTelegramId>>;
 
@@ -178,6 +199,8 @@ export const orderService = {
         riskLevel,
         customerName: input.customerName,
         customerPhone: input.customerPhone,
+        customerTelegramUsername: user.username ?? null,
+        addressLabel: input.addressLabel ?? null,
         idempotencyKey: input.idempotencyKey ?? null,
         items: resolvedItems,
       });
@@ -253,6 +276,46 @@ export const orderService = {
   async listMine(telegramId: number, limit: number): Promise<Order[]> {
     const results = await orderRepository.listByUser(telegramId, limit);
     return results.map(({ order, items }) => toApiOrder(order, items));
+  },
+
+  // Shared by KDS's today-only "Sales" screen and the admin dashboard's
+  // per-period summary (arbitrary date range) — see orderController.todaySummary
+  // and adminController.analytics.
+  async getSalesSummary(from: Date, to: Date): Promise<SalesSummary> {
+    const results = await orderRepository.listByDateRange(from, to, NON_CANCELLED_STATUSES);
+
+    const orderCount = results.length;
+    const revenue = results.reduce((sum, { order }) => sum + Number(order.totalAmount), 0);
+
+    const itemTotals = new Map<string, number>();
+    for (const { items } of results) {
+      for (const item of items) {
+        itemTotals.set(item.productName, (itemTotals.get(item.productName) ?? 0) + item.quantity);
+      }
+    }
+    const topItems = [...itemTotals.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([productName, quantity]) => ({ productName, quantity }));
+
+    return { orderCount, revenue, topItems };
+  },
+
+  async getTodaySummary(): Promise<SalesSummary> {
+    return this.getSalesSummary(startOfToday(), new Date());
+  },
+
+  // Shared by KDS's today-only History screen (statuses fixed to the two
+  // terminal ones — anything still active is already visible in the live
+  // queue) and the admin dashboard's filterable history table (any range,
+  // any status subset).
+  async listOrdersInRange(from: Date, to: Date, statuses: OrderStatus[] | null): Promise<Order[]> {
+    const results = await orderRepository.listByDateRange(from, to, statuses);
+    return results.map(({ order, items }) => toApiOrder(order, items));
+  },
+
+  async getTodayHistory(): Promise<Order[]> {
+    return this.listOrdersInRange(startOfToday(), new Date(), ["DELIVERED", "CANCELLED"]);
   },
 
   // 404, not 403, for someone else's order — a Forbidden response would

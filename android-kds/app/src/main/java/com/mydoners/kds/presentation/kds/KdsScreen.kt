@@ -4,46 +4,41 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mydoners.kds.domain.model.Order
 import com.mydoners.kds.presentation.components.OrderCard
-import com.mydoners.kds.presentation.theme.KdsSuccess
-import com.mydoners.kds.presentation.theme.MyDonersKdsTheme
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun KdsRoot(viewModel: KdsViewModel = koinViewModel()) {
+fun KdsRoot(
+    snackbarHostState: SnackbarHostState,
+    viewModel: KdsViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -59,77 +54,48 @@ fun KdsRoot(viewModel: KdsViewModel = koinViewModel()) {
         viewModel.onAction(KdsAction.OnRetryConnection)
     }
 
-    KdsScreen(state = state, snackbarHostState = snackbarHostState, onAction = viewModel::onAction)
+    KdsScreen(state = state, onAction = viewModel::onAction)
 }
 
 @Composable
-fun KdsScreen(
-    state: KdsState,
-    onAction: (KdsAction) -> Unit,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-) {
-    MyDonersKdsTheme {
-        Scaffold(
-            topBar = { KdsTopBar(isConnected = state.isConnected, orderCount = state.orders.size) },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .background(MaterialTheme.colorScheme.background),
-            ) {
-                when {
-                    state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    state.orders.isEmpty() -> EmptyState()
-                    else -> OrderGrid(orders = state.orders, onAction = onAction)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun KdsTopBar(isConnected: Boolean, orderCount: Int) {
-    Row(
+fun KdsScreen(state: KdsState, onAction: (KdsAction) -> Unit) {
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Text(
-            text = "MyDoners Kitchen",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Row {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .background(if (isConnected) KdsSuccess else Color.Gray, CircleShape),
-            )
-            Text(
-                text = if (isConnected) "  Live · $orderCount active" else "  Reconnecting…",
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
+        when {
+            state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            state.orders.isEmpty() -> EmptyState()
+            else -> OrderGrid(orders = state.orders, onAction = onAction)
         }
     }
 }
 
 @Composable
 private fun OrderGrid(orders: List<Order>, onAction: (KdsAction) -> Unit) {
+    var expandedOrderId by remember { mutableStateOf<Int?>(null) }
+
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        contentPadding = PaddingValues(16.dp),
+        columns = GridCells.Adaptive(minSize = 360.dp),
+        contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        items(orders, key = { it.id }) { order ->
+        items(
+            items = orders,
+            key = { it.id },
+            // An expanded card (customer details + embedded map) needs more
+            // room than the grid's normal column width — span 2 columns
+            // instead of resizing every other card to make space.
+            span = { order -> if (order.id == expandedOrderId) GridItemSpan(2) else GridItemSpan(1) },
+        ) { order ->
             OrderCard(
                 order = order,
+                expanded = order.id == expandedOrderId,
+                onToggleExpand = {
+                    expandedOrderId = if (expandedOrderId == order.id) null else order.id
+                },
                 onAccept = { onAction(KdsAction.OnAcceptOrder(order.id)) },
                 onStartCooking = { onAction(KdsAction.OnStartCooking(order.id)) },
                 onMarkReady = { onAction(KdsAction.OnMarkReady(order.id)) },
@@ -153,5 +119,5 @@ private fun EmptyState() {
 @Preview(widthDp = 1024, heightDp = 600)
 @Composable
 private fun KdsScreenPreview() {
-    KdsScreen(state = KdsState(isLoading = false, isConnected = true), onAction = {})
+    KdsScreen(state = KdsState(isLoading = false), onAction = {})
 }

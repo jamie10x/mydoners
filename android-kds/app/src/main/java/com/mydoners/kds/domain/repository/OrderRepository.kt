@@ -6,6 +6,7 @@ import com.mydoners.kds.domain.model.ChangedBy
 import com.mydoners.kds.domain.model.Order
 import com.mydoners.kds.domain.model.OrderStatus
 import com.mydoners.kds.domain.model.RealtimeEvent
+import com.mydoners.kds.domain.model.SalesSummary
 import kotlinx.coroutines.flow.Flow
 
 interface OrderRepository {
@@ -18,4 +19,8 @@ interface OrderRepository {
 
     /** Live feed — connects lazily on first collection, matching the tablet's always-on screen lifecycle. */
     fun observeRealtimeEvents(): Flow<RealtimeEvent>
+
+    suspend fun fetchTodaySummary(): Result<SalesSummary, DataError.Network>
+
+    suspend fun fetchTodayHistory(): Result<List<Order>, DataError.Network>
 }

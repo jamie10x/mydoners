@@ -9,7 +9,9 @@ import com.mydoners.kds.core.printer.ThermalPrinter
 import com.mydoners.kds.data.remote.OrderApi
 import com.mydoners.kds.data.repository.OrderRepositoryImpl
 import com.mydoners.kds.domain.repository.OrderRepository
+import com.mydoners.kds.presentation.history.HistoryViewModel
 import com.mydoners.kds.presentation.kds.KdsViewModel
+import com.mydoners.kds.presentation.sales.SalesViewModel
 import org.koin.androidx.viewmodel.dsl.viewModelOf
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
@@ -30,4 +32,6 @@ val kdsDataModule = module {
 
 val kdsPresentationModule = module {
     viewModelOf(::KdsViewModel)
+    viewModelOf(::HistoryViewModel)
+    viewModelOf(::SalesViewModel)
 }

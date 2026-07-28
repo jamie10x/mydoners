@@ -27,6 +27,10 @@ data class OrderDto(
     val longitude: Double,
     val landmarkAddress: String,
     val courierNotes: String? = null,
+    val customerName: String? = null,
+    val customerPhone: String? = null,
+    val customerTelegramUsername: String? = null,
+    val addressLabel: String? = null,
     val riskLevel: String? = null,
     val createdAt: String,
     val updatedAt: String,
@@ -36,4 +40,14 @@ data class OrderDto(
 data class UpdateOrderStatusRequest(
     val status: String,
     val changedBy: String,
+)
+
+@Serializable
+data class TopItemDto(val productName: String, val quantity: Int)
+
+@Serializable
+data class SalesSummaryDto(
+    val orderCount: Int,
+    val revenue: Double,
+    val topItems: List<TopItemDto>,
 )

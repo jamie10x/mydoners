@@ -23,6 +23,12 @@ function requireCourierBot(req: Request): void {
   }
 }
 
+function requireDevice(req: Request): void {
+  if (req.actor?.type !== "device") {
+    throw new ForbiddenError("KDS device only");
+  }
+}
+
 export const orderController = {
   async list(req: Request, res: Response) {
     // Staff surfaces only (KDS device key, bots) — a customer JWT listing
@@ -48,6 +54,20 @@ export const orderController = {
     if (req.actor?.type !== "user") throw new ForbiddenError("Only Mini App customers have order history");
     const limit = Math.min(Number(req.query.limit) || 20, 50);
     res.json(await orderService.listMine(req.actor.telegramId, limit));
+  },
+
+  // KDS's ambient "Today's Sales" screen — light on purpose, see
+  // orderService.getTodaySummary. Deep analysis lives in the admin panel.
+  async todaySummary(req: Request, res: Response) {
+    requireDevice(req);
+    res.json(await orderService.getTodaySummary());
+  },
+
+  // KDS's "History" screen — today's completed/cancelled orders only;
+  // anything still active is already visible in the live queue.
+  async todayHistory(req: Request, res: Response) {
+    requireDevice(req);
+    res.json(await orderService.getTodayHistory());
   },
 
   // Courier bot's recovery loop — see orderService.getCourierQueue.

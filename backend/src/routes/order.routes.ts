@@ -11,6 +11,8 @@ orderRoutes.get("/", requireAuth, asyncHandler(orderController.list));
 // as an orderId.
 orderRoutes.get("/courier-queue", requireAuth, asyncHandler(orderController.courierQueue));
 orderRoutes.get("/mine", requireAuth, asyncHandler(orderController.mine));
+orderRoutes.get("/today-summary", requireAuth, asyncHandler(orderController.todaySummary));
+orderRoutes.get("/today-history", requireAuth, asyncHandler(orderController.todayHistory));
 orderRoutes.post("/:orderId/courier-notified", requireAuth, asyncHandler(orderController.markCourierNotified));
 orderRoutes.post("/", requireAuth, asyncHandler(orderController.create));
 orderRoutes.get("/:orderId", requireAuth, asyncHandler(orderController.get));

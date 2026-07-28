@@ -10,6 +10,7 @@ import com.mydoners.kds.domain.model.ChangedBy
 import com.mydoners.kds.domain.model.Order
 import com.mydoners.kds.domain.model.OrderStatus
 import com.mydoners.kds.domain.model.RealtimeEvent
+import com.mydoners.kds.domain.model.SalesSummary
 import com.mydoners.kds.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
 
@@ -32,4 +33,10 @@ class OrderRepositoryImpl(
         orderApi.updateStatus(orderId, status.name, changedBy.name).map { it.toDomain() }
 
     override fun observeRealtimeEvents(): Flow<RealtimeEvent> = realtimeClient.observe()
+
+    override suspend fun fetchTodaySummary(): Result<SalesSummary, DataError.Network> =
+        orderApi.fetchTodaySummary().map { it.toDomain() }
+
+    override suspend fun fetchTodayHistory(): Result<List<Order>, DataError.Network> =
+        orderApi.fetchTodayHistory().map { dtos -> dtos.map { it.toDomain() } }
 }
