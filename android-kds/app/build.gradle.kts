@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -44,18 +44,16 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
-    }
-
+    // No composeOptions.kotlinCompilerExtensionVersion needed — the Compose
+    // Compiler Gradle plugin (applied above) is Kotlin-version-matched and
+    // configures itself automatically.
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // No kotlinOptions block — with AGP's built-in Kotlin, jvmTarget
+    // defaults to compileOptions.targetCompatibility above.
 }
 
 dependencies {

@@ -1,8 +1,7 @@
 [versions]
-agp = "8.5.2"
-kotlin = "1.9.24"
+agp = "9.3.1"
+kotlin = "2.2.10"
 compose-bom = "2024.09.03"
-compose-compiler = "1.5.14"
 core-ktx = "1.13.1"
 lifecycle = "2.8.6"
 activity-compose = "1.9.2"
@@ -55,5 +54,9 @@ maplibre-android = { module = "org.maplibre.gl:android-sdk", version.ref = "mapl
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+# AGP 9's built-in Kotlin support replaces the standalone kotlin-android
+# plugin (see docs/decisions.md's build-tooling note) — this plugin is
+# Kotlin-version-matched and configures the Compose compiler automatically,
+# replacing the old composeOptions.kotlinCompilerExtensionVersion setting.
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
