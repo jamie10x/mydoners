@@ -40,15 +40,15 @@ export function verifyTelegramInitData(initData: string, botToken: string): Tele
     computedHash.length === hash.length &&
     timingSafeEqual(Buffer.from(computedHash), Buffer.from(hash));
 
-  if (!valid) throw new UnauthorizedError("Invalid Telegram initData signature");
+  if (!valid) throw new UnauthorizedError("Telegram initData imzosi noto'g'ri");
 
   const authDate = Number(params.get("auth_date"));
   if (!authDate || Date.now() / 1000 - authDate > 86400) {
-    throw new UnauthorizedError("initData expired");
+    throw new UnauthorizedError("initData muddati tugagan");
   }
 
   const userRaw = params.get("user");
-  if (!userRaw) throw new UnauthorizedError("initData missing user field");
+  if (!userRaw) throw new UnauthorizedError("initData'da foydalanuvchi ma'lumoti yo'q");
 
   const parsed = JSON.parse(userRaw);
   return {
@@ -88,7 +88,7 @@ declare global {
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
-    next(new UnauthorizedError("Missing Authorization header"));
+    next(new UnauthorizedError("Authorization header topilmadi"));
     return;
   }
   const token = header.slice("Bearer ".length);
@@ -124,5 +124,5 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     return;
   }
 
-  next(new UnauthorizedError("Invalid credentials"));
+  next(new UnauthorizedError("Kirish ma'lumotlari noto'g'ri"));
 }

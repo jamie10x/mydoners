@@ -108,7 +108,7 @@ private fun OrderGrid(orders: List<Order>, onAction: (KdsAction) -> Unit) {
 @Composable
 private fun EmptyState() {
     Text(
-        text = "No active orders",
+        text = "Faol buyurtmalar yo'q",
         fontSize = 20.sp,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
         modifier = Modifier.fillMaxSize().padding(32.dp),

@@ -22,8 +22,31 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
   CANCELLED: "bg-red-100 text-red-700",
 };
 
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDING: "Kutilmoqda",
+  CONFIRMED: "Qabul qilindi",
+  COOKING: "Tayyorlanmoqda",
+  READY_FOR_DELIVERY: "Yetkazishga tayyor",
+  ON_THE_WAY: "Yetkazilmoqda",
+  DELIVERED: "Yetkazildi",
+  CANCELLED: "Bekor qilindi",
+};
+
+// Space-grouped digits + "so'm" — matches mini-app's src/lib/format.ts,
+// the way prices are written locally (not en-US commas + "UZS").
 function formatSom(amount: number): string {
-  return `${Math.round(amount).toLocaleString("en-US")} UZS`;
+  const grouped = Math.round(amount)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${grouped} so'm`;
+}
+
+// Numeric, no locale dependency — avoids leaking English month names
+// ("Jul 28") the way Intl's "en-US" formatting would.
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function isoDate(d: Date): string {
@@ -63,7 +86,7 @@ export function DashboardPage() {
         setOrders(ordersRes.orders);
         setTotal(ordersRes.total);
       })
-      .catch(() => setError("Couldn't load dashboard data"))
+      .catch(() => setError("Ma'lumotlarni yuklab bo'lmadi"))
       .finally(() => setLoading(false));
   }
 
@@ -77,37 +100,37 @@ export function DashboardPage() {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-end gap-3">
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-400">From</label>
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-400">Dan</label>
             <input
               type="date"
               value={from}
               max={to}
               onChange={(e) => setFrom(e.target.value)}
-              className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm outline-none focus:border-brand"
+              className="rounded-lg border border-stone-200 px-3 py-1.5 text-base outline-none focus:border-brand"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-400">To</label>
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-400">Gacha</label>
             <input
               type="date"
               value={to}
               min={from}
               max={isoDate(new Date())}
               onChange={(e) => setTo(e.target.value)}
-              className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm outline-none focus:border-brand"
+              className="rounded-lg border border-stone-200 px-3 py-1.5 text-base outline-none focus:border-brand"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-400">Status</label>
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-stone-400">Holat</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "ALL")}
-              className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm outline-none focus:border-brand"
+              className="rounded-lg border border-stone-200 px-3 py-1.5 text-base outline-none focus:border-brand"
             >
-              <option value="ALL">All statuses</option>
+              <option value="ALL">Barcha holatlar</option>
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {STATUS_LABELS[s]}
                 </option>
               ))}
             </select>
@@ -130,13 +153,13 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Revenue" value={formatSom(summary?.revenue ?? 0)} />
-            <StatCard label="Orders" value={String(summary?.orderCount ?? 0)} />
-            <StatCard label="Avg. order value" value={formatSom(avgOrderValue)} />
+            <StatCard label="Tushum" value={formatSom(summary?.revenue ?? 0)} />
+            <StatCard label="Buyurtmalar" value={String(summary?.orderCount ?? 0)} />
+            <StatCard label="O'rtacha buyurtma qiymati" value={formatSom(avgOrderValue)} />
           </div>
 
           <div className="mb-6 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-stone-400">Top products</h3>
+            <h3 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-stone-400">Top mahsulotlar</h3>
             {summary && summary.topItems.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {summary.topItems.map((item, i) => (
@@ -144,13 +167,13 @@ export function DashboardPage() {
                     <span className="w-5 text-sm font-bold text-stone-300">{i + 1}</span>
                     <span className="flex-1 text-sm font-semibold text-stone-900">{item.productName}</span>
                     <span className="rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-bold text-brand">
-                      {item.quantity} sold
+                      {item.quantity} ta sotildi
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-stone-400">No orders in this range yet.</p>
+              <p className="text-sm text-stone-400">Bu davrda hali buyurtma yo'q.</p>
             )}
           </div>
 
@@ -159,25 +182,18 @@ export function DashboardPage() {
               <thead className="border-b border-stone-100 text-left text-xs font-bold uppercase tracking-wide text-stone-400">
                 <tr>
                   <th className="px-4 py-3">#</th>
-                  <th className="px-4 py-3">Placed</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Items</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Sana</th>
+                  <th className="px-4 py-3">Mijoz</th>
+                  <th className="px-4 py-3">Mahsulotlar</th>
+                  <th className="px-4 py-3">Jami</th>
+                  <th className="px-4 py-3">Holat</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.id} className="border-b border-stone-100 last:border-0 hover:bg-stone-50/60">
                     <td className="px-4 py-2.5 font-bold text-stone-900">#{order.id}</td>
-                    <td className="px-4 py-2.5 text-stone-500">
-                      {new Date(order.createdAt).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
+                    <td className="px-4 py-2.5 text-stone-500">{formatShortDate(order.createdAt)}</td>
                     <td className="px-4 py-2.5 text-stone-700">{order.customerName ?? "—"}</td>
                     <td className="px-4 py-2.5 text-stone-500">
                       {order.items.map((i) => `${i.quantity}× ${i.productName}`).join(", ")}
@@ -187,7 +203,7 @@ export function DashboardPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[order.status]}`}>
-                        {order.status}
+                        {STATUS_LABELS[order.status]}
                       </span>
                     </td>
                   </tr>
@@ -195,7 +211,7 @@ export function DashboardPage() {
                 {orders.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-stone-400">
-                      No orders in this range.
+                      Bu davrda buyurtmalar yo'q.
                     </td>
                   </tr>
                 )}
@@ -205,7 +221,7 @@ export function DashboardPage() {
 
           {total > orders.length && (
             <p className="mt-3 text-center text-xs text-stone-400">
-              Showing {orders.length} of {total} orders — narrow the date range or status to see more detail.
+              {total} tadan {orders.length} tasi ko'rsatilmoqda — ko'proq tafsilot uchun sana oralig'i yoki holatni torayting.
             </p>
           )}
         </>

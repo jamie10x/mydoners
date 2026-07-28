@@ -3,8 +3,13 @@ import { api } from "../api/client";
 import type { AdminCategory, AdminProduct } from "../api/types";
 import { ProductForm, type ProductFormValues } from "../components/ProductForm";
 
+// Space-grouped digits + "so'm" — matches mini-app's src/lib/format.ts.
 function formatSom(amount: number | null): string {
-  return amount === null ? "—" : `${amount.toLocaleString("en-US")} UZS`;
+  if (amount === null) return "—";
+  const grouped = Math.round(amount)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${grouped} so'm`;
 }
 
 export function ProductsPage() {
@@ -38,7 +43,7 @@ export function ProductsPage() {
   }
 
   async function handleDelete(product: AdminProduct) {
-    if (!confirm(`Delete "${product.name}"?`)) return;
+    if (!confirm(`"${product.name}"ni o'chirasizmi?`)) return;
     await api.delete(`/admin/products/${product.id}`);
     reload();
   }
@@ -83,13 +88,13 @@ export function ProductsPage() {
 
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-extrabold text-stone-900">
-          Products <span className="font-medium text-stone-400">({products.length})</span>
+          Mahsulotlar <span className="font-medium text-stone-400">({products.length})</span>
         </h2>
         <button
           onClick={() => setEditing("new")}
           className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand/20"
         >
-          + Add product
+          + Mahsulot qo'shish
         </button>
       </div>
 
@@ -97,12 +102,12 @@ export function ProductsPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-stone-100 text-left text-xs font-bold uppercase tracking-wide text-stone-400">
             <tr>
-              <th className="px-4 py-3">Photo</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="px-4 py-3">Rasm</th>
+              <th className="px-4 py-3">Nomi</th>
+              <th className="px-4 py-3">Kategoriya</th>
+              <th className="px-4 py-3">Narx</th>
+              <th className="px-4 py-3">Holat</th>
+              <th className="px-4 py-3">Amallar</th>
             </tr>
           </thead>
           <tbody>
@@ -137,7 +142,7 @@ export function ProductsPage() {
                       product.isAvailable ? "bg-green-100 text-green-700" : "bg-stone-200 text-stone-500"
                     }`}
                   >
-                    {product.isAvailable ? "Available" : "Hidden"}
+                    {product.isAvailable ? "Mavjud" : "Yashirilgan"}
                   </button>
                 </td>
                 <td className="whitespace-nowrap px-4 py-2.5">
@@ -145,16 +150,16 @@ export function ProductsPage() {
                     onClick={() => triggerImageUpload(product.id)}
                     className="mr-3 text-sm font-medium text-stone-500 hover:text-stone-900"
                   >
-                    Photo
+                    Rasm
                   </button>
                   <button
                     onClick={() => setEditing(product)}
                     className="mr-3 text-sm font-medium text-stone-500 hover:text-stone-900"
                   >
-                    Edit
+                    Tahrirlash
                   </button>
                   <button onClick={() => handleDelete(product)} className="text-sm font-medium text-red-600 hover:text-red-800">
-                    Delete
+                    O'chirish
                   </button>
                 </td>
               </tr>

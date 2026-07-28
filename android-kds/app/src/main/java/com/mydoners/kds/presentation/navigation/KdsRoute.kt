@@ -2,9 +2,9 @@ package com.mydoners.kds.presentation.navigation
 
 /** The three destinations behind the side nav rail — see docs/decisions.md. */
 sealed class KdsRoute(val route: String, val label: String) {
-    data object Orders : KdsRoute("orders", "Orders")
-    data object History : KdsRoute("history", "History")
-    data object Sales : KdsRoute("sales", "Today's Sales")
+    data object Orders : KdsRoute("orders", "Buyurtmalar")
+    data object History : KdsRoute("history", "Tarix")
+    data object Sales : KdsRoute("sales", "Bugungi savdo")
 }
 
 // Deliberately NOT a member of KdsRoute's own companion object: a sealed

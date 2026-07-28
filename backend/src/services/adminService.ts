@@ -33,7 +33,7 @@ export const adminService = {
 
   async updateCategory(id: number, input: Partial<{ name: string; displayOrder: number }>) {
     const updated = await categoryRepository.update(id, input);
-    if (!updated) throw new NotFoundError(`Category ${id} not found`);
+    if (!updated) throw new NotFoundError(`${id}-kategoriya topilmadi`);
     return updated;
   },
 
@@ -97,7 +97,7 @@ export const adminService = {
     if (input.imageUrl !== undefined) patch.imageUrl = input.imageUrl;
 
     const updated = await productRepository.update(id, patch);
-    if (!updated) throw new NotFoundError(`Product ${id} not found`);
+    if (!updated) throw new NotFoundError(`${id}-mahsulot topilmadi`);
     return mapProduct(updated);
   },
 

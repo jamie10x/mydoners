@@ -57,7 +57,7 @@ export async function maybeStartOnboarding(telegramId: number, reply: (text: str
 
   state.set(telegramId, { step: "first_name" });
   await reply(
-    "Birinchi buyurtmadan oldin profilingizni to'ldiraylik — atigi 20 soniya vaqt oladi. Istalgan qadamni \"skip\" deb yozib o'tkazib yuborishingiz mumkin.\n\nIsmingiz nima?",
+    "Birinchi buyurtmadan oldin profilingizni to'ldiraylik — atigi 20 soniya vaqt oladi. Istalgan qadamni \"o'tkazish\" deb yozib o'tkazib yuborishingiz mumkin.\n\nIsmingiz nima?",
   );
   return true;
 }
@@ -72,7 +72,7 @@ export async function handleOnboardingText(telegramId: number, text: string, ctx
   if (!current) return false;
 
   const trimmed = text.trim();
-  const skip = trimmed.toLowerCase() === "skip";
+  const skip = trimmed.toLowerCase() === "o'tkazish" || trimmed.toLowerCase() === "otkazish";
 
   if (current.step === "first_name") {
     if (!skip) current.firstName = trimmed;
@@ -90,14 +90,14 @@ export async function handleOnboardingText(telegramId: number, text: string, ctx
       }).catch(() => {});
     }
     current.step = "phone";
-    await ctx.reply("Endi quyidagi tugma orqali telefon raqamingizni ulashing yoki \"skip\" deb yozing.", phoneKeyboard);
+    await ctx.reply("Endi quyidagi tugma orqali telefon raqamingizni ulashing yoki \"o'tkazish\" deb yozing.", phoneKeyboard);
     return true;
   }
 
   if (current.step === "phone" && skip) {
     current.step = "location";
     await ctx.reply(
-      "Mayli. Oxirgi qadam — qayerga yetkazishimizni bilishimiz uchun joylashuvingizni ulashing yoki \"skip\" deb yozing.",
+      "Mayli. Oxirgi qadam — qayerga yetkazishimizni bilishimiz uchun joylashuvingizni ulashing yoki \"o'tkazish\" deb yozing.",
       locationKeyboard,
     );
     return true;
@@ -128,7 +128,7 @@ export async function handleOnboardingContact(
 
   current.step = "location";
   await ctx.reply(
-    "Qabul qilindi! Oxirgi qadam — qayerga yetkazishimizni bilishimiz uchun joylashuvingizni ulashing yoki \"skip\" deb yozing.",
+    "Qabul qilindi! Oxirgi qadam — qayerga yetkazishimizni bilishimiz uchun joylashuvingizni ulashing yoki \"o'tkazish\" deb yozing.",
     locationKeyboard,
   );
   return true;
@@ -146,7 +146,7 @@ export async function handleOnboardingLocation(
 
   await backendFetch(`/users/${telegramId}/addresses`, {
     method: "POST",
-    body: JSON.stringify({ label: "Home", latitude, longitude, landmarkAddress: "Shared via Telegram" }),
+    body: JSON.stringify({ label: "Uy", latitude, longitude, landmarkAddress: "Telegram orqali yuborilgan" }),
   }).catch(() => {});
 
   state.delete(telegramId);

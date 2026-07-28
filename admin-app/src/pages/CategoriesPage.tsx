@@ -25,14 +25,14 @@ export function CategoriesPage() {
   }
 
   async function handleRename(category: AdminCategory) {
-    const name = prompt("Category name", category.name);
+    const name = prompt("Kategoriya nomi", category.name);
     if (!name || name === category.name) return;
     await api.patch(`/admin/categories/${category.id}`, { name });
     reload();
   }
 
   async function handleDelete(category: AdminCategory) {
-    if (!confirm(`Delete "${category.name}"? Products in it will need a new category first.`)) return;
+    if (!confirm(`"${category.name}"ni o'chirasizmi? Undagi mahsulotlarga avval boshqa kategoriya belgilash kerak bo'ladi.`)) return;
     await api.delete(`/admin/categories/${category.id}`);
     reload();
   }
@@ -54,14 +54,14 @@ export function CategoriesPage() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          placeholder="New category name"
-          className="flex-1 rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+          placeholder="Yangi kategoriya nomi"
+          className="flex-1 rounded-lg border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand"
         />
         <button
           onClick={handleAdd}
           className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand/20"
         >
-          Add
+          Qo'shish
         </button>
       </div>
 
@@ -74,10 +74,10 @@ export function CategoriesPage() {
             <span className="font-semibold text-stone-900">{category.name}</span>
             <div className="flex gap-3 text-sm">
               <button onClick={() => handleRename(category)} className="font-medium text-stone-500 hover:text-stone-900">
-                Rename
+                Nomini o'zgartirish
               </button>
               <button onClick={() => handleDelete(category)} className="font-medium text-red-600 hover:text-red-800">
-                Delete
+                O'chirish
               </button>
             </div>
           </div>

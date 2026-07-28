@@ -12,6 +12,9 @@ textarea,
 select {
   color: #1c1917;
   background-color: #ffffff;
+  /* iOS Safari/WKWebView auto-zooms the page on focus when a field's
+     font-size is under 16px — see mini-app/src/index.css for the same fix. */
+  font-size: 16px;
 }
 
 input::placeholder,

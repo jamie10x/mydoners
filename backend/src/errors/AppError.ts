@@ -39,19 +39,19 @@ export class ValidationError extends AppError {
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message = "Unauthorized") {
+  constructor(message = "Ruxsat berilmagan") {
     super("UNAUTHORIZED", message);
   }
 }
 
 export class ForbiddenError extends AppError {
-  constructor(message = "Forbidden") {
+  constructor(message = "Taqiqlangan") {
     super("FORBIDDEN", message);
   }
 }
 
 export class NotFoundError extends AppError {
-  constructor(message = "Not found") {
+  constructor(message = "Topilmadi") {
     super("NOT_FOUND", message);
   }
 }
@@ -63,7 +63,7 @@ export class ConflictError extends AppError {
 }
 
 export class CodBlockedError extends AppError {
-  constructor(message = "Cash on Delivery is not available for this order") {
+  constructor(message = "Ushbu buyurtma uchun naqd to'lov hozircha mavjud emas") {
     super("COD_BLOCKED", message);
   }
 }

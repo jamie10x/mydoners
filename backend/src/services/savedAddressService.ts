@@ -24,7 +24,7 @@ export const savedAddressService = {
   async create(userId: number, label: string, latitude: number, longitude: number, landmarkAddress: string) {
     const count = await savedAddressRepository.countByUser(userId);
     if (count >= MAX_ADDRESSES_PER_USER) {
-      throw new ValidationError(`You can save up to ${MAX_ADDRESSES_PER_USER} addresses — remove one first.`);
+      throw new ValidationError(`Siz maksimal ${MAX_ADDRESSES_PER_USER} ta manzil saqlashingiz mumkin — avval birini o'chiring.`);
     }
     // Bot onboarding can reach here for a telegramId with no `users` row yet
     // (skipped the name/phone steps, went straight to sharing location) —
@@ -41,12 +41,12 @@ export const savedAddressService = {
     patch: Partial<{ label: string; latitude: number; longitude: number; landmarkAddress: string }>,
   ) {
     const row = await savedAddressRepository.update(addressId, userId, patch);
-    if (!row) throw new NotFoundError(`Saved address ${addressId} not found`);
+    if (!row) throw new NotFoundError(`Saqlangan manzil ${addressId} topilmadi`);
     return toApi(row);
   },
 
   async delete(userId: number, addressId: number): Promise<void> {
     const deleted = await savedAddressRepository.delete(addressId, userId);
-    if (!deleted) throw new NotFoundError(`Saved address ${addressId} not found`);
+    if (!deleted) throw new NotFoundError(`Saqlangan manzil ${addressId} topilmadi`);
   },
 };

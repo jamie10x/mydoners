@@ -19,13 +19,13 @@ const DEFAULT_ACTIVE_STATUSES: OrderStatus[] = ["PENDING", "CONFIRMED", "COOKING
 
 function requireCourierBot(req: Request): void {
   if (!(req.actor?.type === "bot" && req.actor.bot === "courier")) {
-    throw new ForbiddenError("Courier bot only");
+    throw new ForbiddenError("Faqat kuryer bot uchun");
   }
 }
 
 function requireDevice(req: Request): void {
   if (req.actor?.type !== "device") {
-    throw new ForbiddenError("KDS device only");
+    throw new ForbiddenError("Faqat KDS qurilmasi uchun");
   }
 }
 
@@ -34,7 +34,7 @@ export const orderController = {
     // Staff surfaces only (KDS device key, bots) — a customer JWT listing
     // every active order would leak other customers' names/addresses.
     if (req.actor?.type === "user") {
-      throw new ForbiddenError("Customers can only fetch their own orders by id");
+      throw new ForbiddenError("Mijozlar faqat o'z buyurtmalarini id orqali ko'ra oladi");
     }
     const statusParam = req.query.status;
     const requested = typeof statusParam === "string" ? statusParam.split(",") : null;
@@ -43,7 +43,7 @@ export const orderController = {
       : DEFAULT_ACTIVE_STATUSES;
 
     if (requested && statuses.length !== requested.length) {
-      throw new ValidationError("Invalid status value in query param", { statusParam });
+      throw new ValidationError("Status qiymati noto'g'ri", { statusParam });
     }
 
     res.json(await orderService.listByStatus(statuses));
@@ -51,7 +51,7 @@ export const orderController = {
 
   // Profile's order-history list — customers only, own orders only.
   async mine(req: Request, res: Response) {
-    if (req.actor?.type !== "user") throw new ForbiddenError("Only Mini App customers have order history");
+    if (req.actor?.type !== "user") throw new ForbiddenError("Faqat Mini App mijozlari buyurtmalar tarixiga ega");
     const limit = Math.min(Number(req.query.limit) || 20, 50);
     res.json(await orderService.listMine(req.actor.telegramId, limit));
   },
@@ -84,10 +84,10 @@ export const orderController = {
 
   async create(req: Request, res: Response) {
     if (req.actor?.type !== "user") {
-      throw new ForbiddenError("Only Mini App customers can place orders");
+      throw new ForbiddenError("Faqat Mini App mijozlari buyurtma bera oladi");
     }
     const parsed = createOrderSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Invalid order payload", { issues: parsed.error.issues });
+    if (!parsed.success) throw new ValidationError("Buyurtma ma'lumotlari noto'g'ri", { issues: parsed.error.issues });
 
     const order = await orderService.createOrder(req.actor.telegramId, parsed.data);
     res.status(201).json(order);
@@ -105,7 +105,7 @@ export const orderController = {
   async updateStatus(req: Request, res: Response) {
     const orderId = Number(req.params.orderId);
     const parsed = updateOrderStatusSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Invalid status update payload", { issues: parsed.error.issues });
+    if (!parsed.success) throw new ValidationError("Status yangilash ma'lumotlari noto'g'ri", { issues: parsed.error.issues });
 
     // changedBy is derived from the authenticated token, not the request
     // body — the body field is kept for backwards compatibility but a
@@ -124,7 +124,7 @@ export const orderController = {
     requireCourierBot(req);
     const orderId = Number(req.params.orderId);
     const file = req.file;
-    if (!file) throw new ValidationError("Delivery-proof photo is required");
+    if (!file) throw new ValidationError("Yetkazib berish tasdig'i uchun fotosurat talab qilinadi");
 
     const photoUrl = `${env.publicApiUrl}/uploads/delivery-proof/${file.filename}`;
     const order = await orderService.confirmDelivery(orderId, photoUrl, req.body.cashConfirmationCode ?? null);

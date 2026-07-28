@@ -33,19 +33,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mydoners.kds.R
+import com.mydoners.kds.core.format.formatSom
 import com.mydoners.kds.domain.model.SalesSummary
 import com.mydoners.kds.presentation.theme.KdsBrand
 import com.mydoners.kds.presentation.theme.KdsSuccess
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-private val CLOCK_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, MMM d · HH:mm")
-
-private fun formatUzs(amount: Double): String {
-    val grouped = amount.toLong().toString().reversed().chunked(3).joinToString(" ").reversed()
-    return "$grouped so'm"
-}
+private val CLOCK_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, d-MMM · HH:mm", Locale("uz"))
 
 @Composable
 fun KdsTopBar(
@@ -87,7 +84,7 @@ fun KdsTopBar(
             }
             Column(modifier = Modifier.padding(start = 14.dp)) {
                 Text(
-                    text = "MyDoners Kitchen",
+                    text = "MyDoners Oshxona",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -104,13 +101,13 @@ fun KdsTopBar(
             if (todaySummary != null) {
                 Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(end = 20.dp)) {
                     Text(
-                        text = "Today · ${todaySummary.orderCount} orders",
+                        text = "Bugun · ${todaySummary.orderCount} ta buyurtma",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     )
                     Text(
-                        text = formatUzs(todaySummary.revenue),
+                        text = formatSom(todaySummary.revenue),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )
@@ -123,14 +120,14 @@ fun KdsTopBar(
                     .background(if (isConnected) KdsSuccess else Color.Gray),
             )
             Text(
-                text = if (isConnected) "  Live" else "  Reconnecting…",
+                text = if (isConnected) "  Onlayn" else "  Qayta ulanmoqda…",
                 fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             )
             IconButton(onClick = onToggleTheme) {
                 Icon(
                     imageVector = if (isDarkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                    contentDescription = if (isDarkTheme) "Switch to light theme" else "Switch to dark theme",
+                    contentDescription = if (isDarkTheme) "Yorug' mavzuga o'tish" else "Qorong'u mavzuga o'tish",
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 )
             }

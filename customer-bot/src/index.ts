@@ -15,7 +15,7 @@ const helpKeyboard = new InlineKeyboard()
   .webApp("🌯 Buyurtma berish", env.miniAppUrl)
   .row()
   .url("📷 Instagram", BUSINESS.instagramUrl)
-  .url("📢 Channel", BUSINESS.channelUrl);
+  .url("📢 Kanal", BUSINESS.channelUrl);
 
 bot.command("start", async (ctx) => {
   const telegramId = ctx.from?.id;

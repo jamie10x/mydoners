@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mydoners.kds.core.format.formatSom
 import com.mydoners.kds.domain.model.SalesSummary
 import com.mydoners.kds.presentation.theme.KdsBrand
 import org.koin.androidx.compose.koinViewModel
@@ -36,26 +37,26 @@ private fun SalesScreen(summary: SalesSummary?, isLoading: Boolean, error: Strin
         when {
             isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             error != null -> Text(
-                text = "Couldn't load today's sales: $error",
+                text = "Bugungi savdoni yuklab bo'lmadi: $error",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.align(Alignment.Center).padding(32.dp),
             )
             summary == null -> {}
             else -> Column(modifier = Modifier.padding(32.dp)) {
                 Text(
-                    text = "Today's Sales",
+                    text = "Bugungi savdo",
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Row(modifier = Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatCard(label = "Orders today", value = summary.orderCount.toString())
-                    StatCard(label = "Revenue today", value = "${summary.revenue.toLong()} UZS")
+                    StatCard(label = "Bugungi buyurtmalar", value = summary.orderCount.toString())
+                    StatCard(label = "Bugungi tushum", value = formatSom(summary.revenue))
                 }
 
                 if (summary.topItems.isNotEmpty()) {
                     Text(
-                        text = "Top items today",
+                        text = "Bugungi top mahsulotlar",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
@@ -84,7 +85,7 @@ private fun SalesScreen(summary: SalesSummary?, isLoading: Boolean, error: Strin
                     }
                 } else {
                     Text(
-                        text = "No orders yet today",
+                        text = "Bugun hali buyurtma yo'q",
                         fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
                         modifier = Modifier.padding(top = 28.dp),

@@ -18,7 +18,7 @@ export function signAdminToken(): string {
 export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
-    next(new UnauthorizedError("Missing Authorization header"));
+    next(new UnauthorizedError("Authorization header topilmadi"));
     return;
   }
   try {
@@ -26,6 +26,6 @@ export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
     if (payload.admin !== true) throw new Error("not an admin token");
     next();
   } catch {
-    next(new UnauthorizedError("Invalid or expired admin session"));
+    next(new UnauthorizedError("Sessiya tugagan yoki yaroqsiz — qayta kiring"));
   }
 }

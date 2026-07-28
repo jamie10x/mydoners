@@ -123,7 +123,7 @@ export function ProfilePage() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder={t("firstNamePlaceholder")}
-                className="w-full min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                className="w-full min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand"
               />
               <label htmlFor="profile-last-name" className="sr-only">
                 {t("lastNamePlaceholder")}
@@ -133,7 +133,7 @@ export function ProfilePage() {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder={t("lastNamePlaceholder")}
-                className="w-full min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                className="w-full min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand"
               />
             </div>
             <label htmlFor="profile-phone" className="sr-only">
@@ -146,7 +146,7 @@ export function ProfilePage() {
               placeholder="+998 90 123 45 67"
               inputMode="tel"
               aria-invalid={phoneInvalid}
-              className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand ${
+              className={`w-full rounded-xl border px-3 py-2 text-base outline-none focus:border-brand ${
                 phoneInvalid ? "border-red-300" : "border-stone-200"
               }`}
             />
@@ -233,7 +233,7 @@ export function ProfilePage() {
                     value={newLabel}
                     onChange={(e) => setNewLabel(e.target.value)}
                     placeholder={t("addressLabelExample")}
-                    className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                    className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand"
                   />
                   <label htmlFor="new-address-landmark" className="sr-only">
                     {t("landmarkTitle")}
@@ -244,7 +244,7 @@ export function ProfilePage() {
                     onChange={(e) => setNewLandmark(e.target.value)}
                     placeholder={t("landmarkTitle")}
                     rows={2}
-                    className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                    className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand"
                   />
                   <div className="mt-2 flex gap-2">
                     <button

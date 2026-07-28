@@ -56,7 +56,7 @@ class KdsViewModel(
                 }
                 .onFailure { error ->
                     _state.update { it.copy(isLoading = false) }
-                    _events.send(KdsEvent.ShowError("Couldn't load orders: $error"))
+                    _events.send(KdsEvent.ShowError("Buyurtmalarni yuklab bo'lmadi: $error"))
                 }
         }
     }
@@ -126,7 +126,7 @@ class KdsViewModel(
                     loadTodaySummary()
                     if (printOnSuccess) thermalPrinter.printReceipt(order)
                 }
-                .onFailure { error -> _events.send(KdsEvent.ShowError("Update failed: $error")) }
+                .onFailure { error -> _events.send(KdsEvent.ShowError("Yangilashda xatolik: $error")) }
         }
     }
 

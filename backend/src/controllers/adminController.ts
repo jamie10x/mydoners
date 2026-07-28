@@ -32,7 +32,7 @@ function parseDateRange(query: Request["query"]): { from: Date; to: Date } {
     ? new Date(String(query.from))
     : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
   if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-    throw new ValidationError("Invalid from/to date", { from: query.from, to: query.to });
+    throw new ValidationError("Sana oralig'i noto'g'ri", { from: query.from, to: query.to });
   }
   // Inclusive of the whole "to" day when it's a bare date (e.g. "2026-07-28").
   if (typeof query.to === "string" && /^\d{4}-\d{2}-\d{2}$/.test(query.to)) {
@@ -44,8 +44,8 @@ function parseDateRange(query: Request["query"]): { from: Date; to: Date } {
 export const adminController = {
   async login(req: Request, res: Response) {
     const parsed = adminLoginSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Password required");
-    if (!checkAdminPassword(parsed.data.password)) throw new UnauthorizedError("Incorrect password");
+    if (!parsed.success) throw new ValidationError("Parol talab qilinadi");
+    if (!checkAdminPassword(parsed.data.password)) throw new UnauthorizedError("Parol noto'g'ri");
     res.json({ token: signAdminToken() });
   },
 
@@ -55,13 +55,13 @@ export const adminController = {
 
   async createCategory(req: Request, res: Response) {
     const parsed = categoryCreateSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Invalid category payload", { issues: parsed.error.issues });
+    if (!parsed.success) throw new ValidationError("Kategoriya ma'lumotlari noto'g'ri", { issues: parsed.error.issues });
     res.status(201).json(await adminService.createCategory(parsed.data));
   },
 
   async updateCategory(req: Request, res: Response) {
     const parsed = categoryUpdateSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Invalid category payload", { issues: parsed.error.issues });
+    if (!parsed.success) throw new ValidationError("Kategoriya ma'lumotlari noto'g'ri", { issues: parsed.error.issues });
     res.json(await adminService.updateCategory(Number(req.params.id), parsed.data));
   },
 
@@ -76,13 +76,13 @@ export const adminController = {
 
   async createProduct(req: Request, res: Response) {
     const parsed = productCreateSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Invalid product payload", { issues: parsed.error.issues });
+    if (!parsed.success) throw new ValidationError("Mahsulot ma'lumotlari noto'g'ri", { issues: parsed.error.issues });
     res.status(201).json(await adminService.createProduct(parsed.data));
   },
 
   async updateProduct(req: Request, res: Response) {
     const parsed = productUpdateSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError("Invalid product payload", { issues: parsed.error.issues });
+    if (!parsed.success) throw new ValidationError("Mahsulot ma'lumotlari noto'g'ri", { issues: parsed.error.issues });
     res.json(await adminService.updateProduct(Number(req.params.id), parsed.data));
   },
 
@@ -93,7 +93,7 @@ export const adminController = {
 
   async uploadProductImage(req: Request, res: Response) {
     const file = req.file;
-    if (!file) throw new ValidationError("Image file is required");
+    if (!file) throw new ValidationError("Rasm fayli talab qilinadi");
     const imageUrl = `${env.publicApiUrl}/uploads/products/${file.filename}`;
     const product = await adminService.updateProduct(Number(req.params.productId), { imageUrl });
     res.json(product);
@@ -113,7 +113,7 @@ export const adminController = {
     const statusParam = req.query.status;
     const statuses = typeof statusParam === "string" ? statusParam.split(",") : null;
     if (statuses && statuses.some((s) => !VALID_ORDER_STATUSES.includes(s as OrderStatus))) {
-      throw new ValidationError("Invalid status value in query param", { status: statusParam });
+      throw new ValidationError("Status qiymati noto'g'ri", { status: statusParam });
     }
 
     const allMatching = await orderService.listOrdersInRange(from, to, statuses as OrderStatus[] | null);

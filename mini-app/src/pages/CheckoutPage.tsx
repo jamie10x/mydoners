@@ -236,7 +236,7 @@ export function CheckoutPage() {
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder={t("fullNamePlaceholder")}
-                className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+                className="w-full rounded-xl border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand"
               />
               <label htmlFor="checkout-phone" className="sr-only">
                 {t("phoneFieldLabel")}
@@ -248,7 +248,7 @@ export function CheckoutPage() {
                 placeholder="+998 90 123 45 67"
                 inputMode="tel"
                 aria-invalid={phoneInvalid}
-                className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand ${
+                className={`w-full rounded-xl border px-3 py-2 text-base outline-none focus:border-brand ${
                   phoneInvalid ? "border-red-300" : "border-stone-200"
                 }`}
               />
@@ -302,7 +302,7 @@ export function CheckoutPage() {
                       onChange={(e) => setSavingLabel(e.target.value)}
                       placeholder={t("addressLabelPlaceholder")}
                       autoFocus
-                      className="min-w-0 flex-1 rounded-lg border border-stone-200 px-3 py-1.5 text-sm outline-none focus:border-brand"
+                      className="min-w-0 flex-1 rounded-lg border border-stone-200 px-3 py-1.5 text-base outline-none focus:border-brand"
                     />
                     <button
                       onClick={confirmSaveAddress}
@@ -371,7 +371,7 @@ export function CheckoutPage() {
               onChange={(e) => setLandmarkAddress(e.target.value)}
               placeholder={t("landmarkPlaceholder")}
               rows={2}
-              className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+              className="w-full rounded-xl border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand"
             />
           </section>
 
@@ -384,7 +384,7 @@ export function CheckoutPage() {
               value={courierNotes}
               onChange={(e) => setCourierNotes(e.target.value)}
               rows={2}
-              className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand"
+              className="w-full rounded-xl border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand"
             />
           </section>
 

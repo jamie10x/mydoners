@@ -22,14 +22,14 @@ export function App() {
             <img src="/logo.svg" alt="" className="h-9 w-9 rounded-lg" />
             <div>
               <h1 className="text-base font-extrabold leading-tight text-stone-900">MyDoners Admin</h1>
-              <p className="text-xs text-stone-400">Sales & menu management</p>
+              <p className="text-xs text-stone-400">Savdo va menyu boshqaruvi</p>
             </div>
           </div>
           <button
             onClick={clearToken}
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-900"
           >
-            Sign out
+            Chiqish
           </button>
         </div>
       </header>
@@ -42,7 +42,7 @@ export function App() {
               tab === "dashboard" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
             }`}
           >
-            Dashboard
+            Statistika
           </button>
           <button
             onClick={() => setTab("products")}
@@ -50,7 +50,7 @@ export function App() {
               tab === "products" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
             }`}
           >
-            Products
+            Mahsulotlar
           </button>
           <button
             onClick={() => setTab("categories")}
@@ -58,7 +58,7 @@ export function App() {
               tab === "categories" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
             }`}
           >
-            Categories
+            Kategoriyalar
           </button>
         </nav>
 

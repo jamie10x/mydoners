@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mydoners.kds.core.format.formatSom
 import com.mydoners.kds.domain.model.Order
 import com.mydoners.kds.domain.model.OrderStatus
 import com.mydoners.kds.presentation.theme.KdsSuccess
@@ -39,12 +40,12 @@ private fun HistoryScreen(orders: List<Order>, isLoading: Boolean, error: String
         when {
             isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             error != null -> Text(
-                text = "Couldn't load history: $error",
+                text = "Tarixni yuklab bo'lmadi: $error",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.align(Alignment.Center).padding(32.dp),
             )
             orders.isEmpty() -> Text(
-                text = "No completed or cancelled orders yet today",
+                text = "Bugun hali yakunlangan yoki bekor qilingan buyurtma yo'q",
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
                 modifier = Modifier.align(Alignment.Center).padding(32.dp),
@@ -83,13 +84,13 @@ private fun HistoryRow(order: Order) {
         }
         Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
             Text(
-                text = if (order.status == OrderStatus.DELIVERED) "DELIVERED" else "CANCELLED",
+                text = if (order.status == OrderStatus.DELIVERED) "YETKAZILDI" else "BEKOR QILINDI",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (order.status == OrderStatus.DELIVERED) KdsSuccess else MaterialTheme.colorScheme.error,
             )
             Text(
-                text = "${order.totalAmount.toLong()} UZS",
+                text = formatSom(order.totalAmount),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,

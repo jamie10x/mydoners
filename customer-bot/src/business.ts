@@ -3,8 +3,8 @@
 export const BUSINESS = {
   tagline: "Halol va sifatli fast food tarmog'i",
   phone: "+998 88 422 33 22",
-  address: "Norinkapa, next to Impulse, Namangan",
-  hours: "09:00 – 02:00, every day",
+  address: "Norinkapa, Impulse yonida, Namangan",
+  hours: "09:00 – 02:00, har kuni",
   instagramUrl: "https://www.instagram.com/mydoners_uz/",
   channelUrl: "https://t.me/mydoners_uzb",
 };

@@ -42,13 +42,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mydoners.kds.core.format.formatSom
 import com.mydoners.kds.domain.model.Order
 import com.mydoners.kds.domain.model.OrderStatus
 import com.mydoners.kds.domain.model.PaymentStatus
+import com.mydoners.kds.domain.model.PaymentType
 import com.mydoners.kds.domain.model.RiskLevel
 import com.mydoners.kds.presentation.theme.KdsBrand
 import com.mydoners.kds.presentation.theme.KdsSuccess
 import com.mydoners.kds.presentation.theme.KdsWarning
+
+private fun paymentLabel(type: PaymentType): String = when (type) {
+    PaymentType.CASH -> "Naqd pul"
+    PaymentType.CLICK -> "Click"
+    PaymentType.PAYME -> "Payme"
+}
+
+// Cart/order variant values are stored as "Beef"/"Chicken" (the API
+// contract) — mapped to Uzbek only for display, matching the Mini App.
+private fun variantLabel(variant: String): String = when (variant) {
+    "Beef" -> "Mol go'shti"
+    "Chicken" -> "Tovuq go'shti"
+    else -> variant
+}
 
 @Composable
 fun OrderCard(
@@ -97,7 +113,7 @@ fun OrderCard(
 
             if (order.riskLevel == RiskLevel.MEDIUM) {
                 Text(
-                    text = "⚠ FIRST-TIME / HIGH-VALUE — double-check before accepting",
+                    text = "⚠ BIRINCHI MARTA / YUQORI SUMMA — qabul qilishdan oldin tekshiring",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = KdsWarning,
@@ -111,7 +127,7 @@ fun OrderCard(
                         Text(
                             text = buildString {
                                 append("${item.quantity}× ${item.productName}")
-                                item.selectedVariant?.let { append(" — ${it.uppercase()}") }
+                                item.selectedVariant?.let { append(" — ${variantLabel(it).uppercase()}") }
                             },
                             fontSize = 20.sp,
                             fontWeight = if (item.selectedVariant != null) FontWeight.Bold else FontWeight.Normal,
@@ -135,13 +151,13 @@ fun OrderCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = order.paymentType.name,
+                    text = paymentLabel(order.paymentType),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (order.paymentStatus == PaymentStatus.PAID) KdsSuccess else KdsWarning,
                 )
                 Text(
-                    text = "${order.totalAmount.toLong()} UZS",
+                    text = formatSom(order.totalAmount),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -157,25 +173,25 @@ fun OrderCard(
                         onClick = onAccept,
                         modifier = Modifier.fillMaxWidth(0.6f),
                         colors = ButtonDefaults.buttonColors(containerColor = KdsSuccess),
-                    ) { Text("ACCEPT ORDER", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text("QABUL QILISH", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 
                     OrderStatus.CONFIRMED -> Button(
                         onClick = onStartCooking,
                         modifier = Modifier.fillMaxWidth(0.6f),
                         colors = ButtonDefaults.buttonColors(containerColor = KdsSuccess),
-                    ) { Text("START COOKING", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text("TAYYORLASHNI BOSHLASH", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 
                     OrderStatus.COOKING -> Button(
                         onClick = onMarkReady,
                         modifier = Modifier.fillMaxWidth(0.6f),
                         colors = ButtonDefaults.buttonColors(containerColor = KdsWarning),
-                    ) { Text("READY FOR DELIVERY", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text("YETKAZISHGA TAYYOR", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 
                     else -> {}
                 }
 
                 OutlinedButton(onClick = { showCancelConfirm = true }) {
-                    Text(if (isPending) "Reject" else "Cancel", fontSize = 16.sp)
+                    Text(if (isPending) "Rad etish" else "Bekor qilish", fontSize = 16.sp)
                 }
             }
 
@@ -190,7 +206,7 @@ fun OrderCard(
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 )
                 Text(
-                    text = if (expanded) "Less details" else "Customer & delivery details",
+                    text = if (expanded) "Kamroq ma'lumot" else "Mijoz va yetkazib berish ma'lumotlari",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 )
@@ -204,19 +220,22 @@ fun OrderCard(
     }
 
     if (showCancelConfirm) {
-        val verb = if (isPending) "reject" else "cancel"
         AlertDialog(
             onDismissRequest = { showCancelConfirm = false },
-            title = { Text("${verb.replaceFirstChar(Char::uppercase)} order #${order.id}?") },
-            text = { Text("This can't be undone — the customer will be notified.") },
+            title = {
+                Text(
+                    if (isPending) "#${order.id}-buyurtmani rad etasizmi?" else "#${order.id}-buyurtmani bekor qilasizmi?",
+                )
+            },
+            text = { Text("Buni ortga qaytarib bo'lmaydi — mijozga xabar beriladi.") },
             confirmButton = {
                 TextButton(onClick = {
                     showCancelConfirm = false
                     onCancel()
-                }) { Text("Yes, $verb it", color = MaterialTheme.colorScheme.error) }
+                }) { Text(if (isPending) "Ha, rad etish" else "Ha, bekor qilish", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { showCancelConfirm = false }) { Text("Never mind") }
+                TextButton(onClick = { showCancelConfirm = false }) { Text("Yo'q") }
             },
         )
     }
@@ -234,7 +253,7 @@ private fun OrderDetails(order: Order) {
         ) {
             Column {
                 Text(
-                    text = order.customerName?.takeIf { it.isNotBlank() } ?: "Unknown customer",
+                    text = order.customerName?.takeIf { it.isNotBlank() } ?: "Noma'lum mijoz",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -296,10 +315,10 @@ private fun OrderDetails(order: Order) {
 @Composable
 private fun StatusBadge(status: OrderStatus) {
     val (label, color) = when (status) {
-        OrderStatus.PENDING -> "NEW" to KdsBrand
-        OrderStatus.CONFIRMED -> "ACCEPTED" to KdsSuccess
-        OrderStatus.COOKING -> "COOKING" to KdsWarning
-        OrderStatus.READY_FOR_DELIVERY -> "READY" to KdsSuccess
+        OrderStatus.PENDING -> "YANGI" to KdsBrand
+        OrderStatus.CONFIRMED -> "QABUL QILINDI" to KdsSuccess
+        OrderStatus.COOKING -> "TAYYORLANMOQDA" to KdsWarning
+        OrderStatus.READY_FOR_DELIVERY -> "TAYYOR" to KdsSuccess
         else -> status.name to Color.Gray
     }
     Text(

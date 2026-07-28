@@ -47,13 +47,13 @@ export function ProductForm({ categories, initial, onSubmit, onCancel }: Product
         isAvailable,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : "Saqlashda xatolik yuz berdi");
       setSaving(false);
     }
   }
 
   const inputClass =
-    "mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-brand";
+    "mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-base outline-none focus:border-brand";
   const labelClass = "text-sm font-semibold text-stone-500";
 
   return (
@@ -63,10 +63,10 @@ export function ProductForm({ categories, initial, onSubmit, onCancel }: Product
         onClick={(e) => e.stopPropagation()}
         className="flex max-h-[90vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
       >
-        <h2 className="text-lg font-extrabold text-stone-900">{initial ? "Edit product" : "New product"}</h2>
+        <h2 className="text-lg font-extrabold text-stone-900">{initial ? "Mahsulotni tahrirlash" : "Yangi mahsulot"}</h2>
 
         <label className={labelClass}>
-          Category
+          Kategoriya
           <select value={categoryId} onChange={(e) => setCategoryId(Number(e.target.value))} className={inputClass}>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -77,24 +77,24 @@ export function ProductForm({ categories, initial, onSubmit, onCancel }: Product
         </label>
 
         <label className={labelClass}>
-          Name
+          Nomi
           <input value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} />
         </label>
 
         <label className={labelClass}>
-          Description (optional)
+          Tavsif (ixtiyoriy)
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputClass} />
         </label>
 
         <label className="flex items-center gap-2 text-sm font-semibold text-stone-500">
           <input type="checkbox" checked={hasMeatChoice} onChange={(e) => setHasMeatChoice(e.target.checked)} />
-          Requires Beef/Chicken choice
+          Go'sht turini tanlash talab qilinadi (mol/tovuq)
         </label>
 
         {hasMeatChoice ? (
           <div className="flex gap-3">
             <label className={`flex-1 ${labelClass}`}>
-              Beef price (UZS)
+              Mol go'shti narxi (so'm)
               <input
                 type="number"
                 value={beefPrice}
@@ -104,7 +104,7 @@ export function ProductForm({ categories, initial, onSubmit, onCancel }: Product
               />
             </label>
             <label className={`flex-1 ${labelClass}`}>
-              Chicken price (UZS)
+              Tovuq go'shti narxi (so'm)
               <input
                 type="number"
                 value={chickenPrice}
@@ -116,7 +116,7 @@ export function ProductForm({ categories, initial, onSubmit, onCancel }: Product
           </div>
         ) : (
           <label className={labelClass}>
-            Price (UZS)
+            Narxi (so'm)
             <input
               type="number"
               value={basePrice}
@@ -129,7 +129,7 @@ export function ProductForm({ categories, initial, onSubmit, onCancel }: Product
 
         <label className="flex items-center gap-2 text-sm font-semibold text-stone-500">
           <input type="checkbox" checked={isAvailable} onChange={(e) => setIsAvailable(e.target.checked)} />
-          Available on the menu
+          Menyuda ko'rsatish
         </label>
 
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}
@@ -140,14 +140,14 @@ export function ProductForm({ categories, initial, onSubmit, onCancel }: Product
             onClick={onCancel}
             className="flex-1 rounded-lg border border-stone-200 py-2 text-sm font-semibold text-stone-700"
           >
-            Cancel
+            Bekor qilish
           </button>
           <button
             type="submit"
             disabled={saving || !categoryId}
             className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
       </form>

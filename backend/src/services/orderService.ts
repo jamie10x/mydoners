@@ -124,20 +124,20 @@ export const orderService = {
     for (const line of input.items) {
       const product = await productRepository.findById(line.productId);
       if (!product || !product.isAvailable) {
-        throw new ValidationError(`Product ${line.productId} is not available`, { productId: line.productId });
+        throw new ValidationError(`${line.productId}-mahsulot hozircha mavjud emas`, { productId: line.productId });
       }
 
       let unitPrice: number;
       if (product.hasMeatChoice) {
         if (line.selectedVariant !== "Beef" && line.selectedVariant !== "Chicken") {
-          throw new ValidationError(`Product "${product.name}" requires selecting Beef or Chicken`, {
+          throw new ValidationError(`"${product.name}" uchun go'sht turini (mol yoki tovuq) tanlash kerak`, {
             productId: line.productId,
           });
         }
         unitPrice = Number(line.selectedVariant === "Beef" ? product.beefPrice : product.chickenPrice);
       } else {
         if (line.selectedVariant) {
-          throw new ValidationError(`Product "${product.name}" does not support variant selection`, {
+          throw new ValidationError(`"${product.name}" uchun go'sht turini tanlash mumkin emas`, {
             productId: line.productId,
           });
         }
@@ -268,7 +268,7 @@ export const orderService = {
 
   async getOrder(orderId: number): Promise<Order> {
     const result = await orderRepository.findById(orderId);
-    if (!result) throw new NotFoundError(`Order ${orderId} not found`);
+    if (!result) throw new NotFoundError(`${orderId}-buyurtma topilmadi`);
     return toApiOrder(result.order, result.items);
   },
 
@@ -323,7 +323,7 @@ export const orderService = {
   async assertOwnedBy(orderId: number, telegramId: number): Promise<void> {
     const result = await orderRepository.findById(orderId);
     if (!result || result.order.userId !== telegramId) {
-      throw new NotFoundError(`Order ${orderId} not found`);
+      throw new NotFoundError(`${orderId}-buyurtma topilmadi`);
     }
   },
 
@@ -334,7 +334,7 @@ export const orderService = {
   // this is queried later. CoD-only, matching createOrder's gating.
   async getRiskAssessment(orderId: number): Promise<RiskAssessment> {
     const result = await orderRepository.findById(orderId);
-    if (!result) throw new NotFoundError(`Order ${orderId} not found`);
+    if (!result) throw new NotFoundError(`${orderId}-buyurtma topilmadi`);
 
     if (result.order.paymentType !== "CASH" || !result.order.riskLevel) {
       return { riskLevel: "LOW", reason: "LOW_VALUE_ORDER", action: "NONE" };
@@ -385,11 +385,11 @@ export const orderService = {
 
   async updateStatus(orderId: number, newStatus: OrderStatus, changedBy: ChangedBy, actor?: Actor): Promise<Order> {
     const existing = await orderRepository.findById(orderId);
-    if (!existing) throw new NotFoundError(`Order ${orderId} not found`);
+    if (!existing) throw new NotFoundError(`${orderId}-buyurtma topilmadi`);
 
     const currentStatus = existing.order.status as OrderStatus;
     if (!ALLOWED_TRANSITIONS[currentStatus].includes(newStatus)) {
-      throw new ConflictError(`Cannot transition order from ${currentStatus} to ${newStatus}`, {
+      throw new ConflictError(`Buyurtma holatini ${currentStatus} dan ${newStatus} ga o'zgartirib bo'lmaydi`, {
         currentStatus,
         requestedStatus: newStatus,
       });
@@ -399,7 +399,7 @@ export const orderService = {
     // `actor` is undefined only for trusted internal calls (e.g. payment
     // webhooks), never for HTTP requests.
     if (actor && !actorMayTransition(actor, currentStatus, newStatus, existing.order.userId)) {
-      throw new ForbiddenError(`This caller may not transition an order from ${currentStatus} to ${newStatus}`);
+      throw new ForbiddenError(`Bu foydalanuvchi buyurtma holatini ${currentStatus} dan ${newStatus} ga o'zgartira olmaydi`);
     }
 
     if (
@@ -411,11 +411,11 @@ export const orderService = {
     }
 
     const result = await orderRepository.updateStatus(orderId, newStatus, changedBy);
-    if (!result) throw new NotFoundError(`Order ${orderId} not found`);
+    if (!result) throw new NotFoundError(`${orderId}-buyurtma topilmadi`);
     if ("conflict" in result) {
       // Lost a race: another caller moved the order between our unlocked
       // pre-check above and the locked write.
-      throw new ConflictError(`Cannot transition order from ${result.conflict} to ${newStatus}`, {
+      throw new ConflictError(`Buyurtma holatini ${result.conflict} dan ${newStatus} ga o'zgartirib bo'lmaydi`, {
         currentStatus: result.conflict,
         requestedStatus: newStatus,
       });
@@ -464,7 +464,7 @@ export const orderService = {
     const attemptsKey = cashCodeAttemptsKey(orderId);
     const attempts = Number((await redis.get(attemptsKey)) ?? 0);
     if (attempts >= MAX_CASH_CODE_ATTEMPTS) {
-      throw new ValidationError("Too many cash-code attempts — call the restaurant to confirm this delivery", {
+      throw new ValidationError("Kod urinishlari juda ko'p — yetkazishni tasdiqlash uchun restoranga qo'ng'iroq qiling", {
         orderId,
       });
     }
@@ -472,16 +472,16 @@ export const orderService = {
     const result = await orderRepository.confirmDelivery(orderId, photoUrl, submittedCashCode);
 
     if ("error" in result) {
-      if (result.error === "NOT_FOUND") throw new NotFoundError(`Order ${orderId} not found`);
+      if (result.error === "NOT_FOUND") throw new NotFoundError(`${orderId}-buyurtma topilmadi`);
       if (result.error === "BAD_STATUS") {
-        throw new ConflictError(`Cannot transition order from ${result.currentStatus} to DELIVERED`, {
+        throw new ConflictError(`Buyurtma holatini ${result.currentStatus} dan DELIVERED ga o'zgartirib bo'lmaydi`, {
           currentStatus: result.currentStatus,
           requestedStatus: "DELIVERED",
         });
       }
       // BAD_CODE — count the failed guess, expire the counter with the order's relevance window.
       await redis.multi().incr(attemptsKey).expire(attemptsKey, 86_400).exec();
-      throw new ValidationError("Cash confirmation code does not match", { orderId });
+      throw new ValidationError("Tasdiqlash kodi mos kelmadi", { orderId });
     }
 
     const userId = result.order.userId!;

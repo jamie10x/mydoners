@@ -27,7 +27,7 @@ private val AGING = KdsWarning
 private val STALE = Color(0xFFE2231A) // KdsBrand — reused for "needs attention now"
 
 /**
- * "2m ago" / "1h 14m ago", color-shifting as the order waits — a kitchen
+ * "2d oldin" / "1s 14d oldin", color-shifting as the order waits — a kitchen
  * glancing at the grid should be able to tell "just placed" from "sitting
  * for 15 minutes" without doing the subtraction themselves. Self-ticking so
  * it stays accurate without the parent screen re-fetching anything.
@@ -69,8 +69,8 @@ private fun elapsedSince(iso: String): Duration = try {
 
 private fun formatElapsed(duration: Duration): String {
     val minutes = duration.toMinutes()
-    if (minutes < 1) return "just now"
+    if (minutes < 1) return "hozirgina"
     val hours = minutes / 60
     val remMinutes = minutes % 60
-    return if (hours > 0) "${hours}h ${remMinutes}m ago" else "${minutes}m ago"
+    return if (hours > 0) "${hours}s ${remMinutes}d oldin" else "${minutes}d oldin"
 }
