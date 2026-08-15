@@ -208,6 +208,31 @@ export const orderRepository = {
     }));
   },
 
+  /**
+   * Status timeline across all of one customer's orders, newest first.
+   *
+   * This is the first read of `order_logs` anywhere — the table has been
+   * write-only since it was introduced (every status change is recorded, and
+   * nothing ever looked at it). It backs the admin customer detail view's
+   * per-order timeline, which is what makes "what actually happened to this
+   * order" answerable during a support conversation.
+   */
+  async listLogsForUser(userId: number, limit: number) {
+    return db
+      .select({
+        orderId: orderLogs.orderId,
+        previousStatus: orderLogs.previousStatus,
+        newStatus: orderLogs.newStatus,
+        changedBy: orderLogs.changedBy,
+        timestamp: orderLogs.timestamp,
+      })
+      .from(orderLogs)
+      .innerJoin(orders, eq(orderLogs.orderId, orders.id))
+      .where(eq(orders.userId, userId))
+      .orderBy(desc(orderLogs.timestamp))
+      .limit(limit);
+  },
+
   async markPaid(id: number) {
     await db.update(orders).set({ paymentStatus: "PAID" }).where(eq(orders.id, id));
   },

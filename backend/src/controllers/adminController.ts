@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type { OrderStatus } from "@mydoners/shared-contracts";
 import { adminService } from "../services/adminService";
+import { adminUserService } from "../services/adminUserService";
 import { orderService } from "../services/orderService";
 import { checkAdminPassword, signAdminToken } from "../middleware/adminAuth";
 import { env } from "../config/env";
@@ -11,6 +12,8 @@ import {
   productCreateSchema,
   productUpdateSchema,
 } from "../dto/admin.dto";
+import { userListQuerySchema, userUpdateSchema } from "../dto/adminUser.dto";
+import { resetRateLimit } from "../middleware/rateLimit";
 import { UnauthorizedError, ValidationError } from "../errors/AppError";
 
 const VALID_ORDER_STATUSES: OrderStatus[] = [
@@ -46,6 +49,9 @@ export const adminController = {
     const parsed = adminLoginSchema.safeParse(req.body);
     if (!parsed.success) throw new ValidationError("Parol talab qilinadi");
     if (!checkAdminPassword(parsed.data.password)) throw new UnauthorizedError("Parol noto'g'ri");
+    // Clear the throttle on success so day-to-day logins never count toward a
+    // lockout — only failed guesses accumulate.
+    await resetRateLimit("admin-login", req);
     res.json({ token: signAdminToken() });
   },
 
@@ -121,5 +127,37 @@ export const adminController = {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const offset = Math.max(Number(req.query.offset) || 0, 0);
     res.json({ total: allMatching.length, orders: allMatching.slice(offset, offset + limit) });
+  },
+
+  // Customer list — searchable, segmentable, and paginated in SQL (unlike
+  // `orders` above, which still slices in memory).
+  async listUsers(req: Request, res: Response) {
+    const parsed = userListQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new ValidationError("Mijozlar filtri noto'g'ri", { issues: parsed.error.issues });
+    }
+    const { q, ...rest } = parsed.data;
+    res.json(await adminUserService.list({ ...rest, q: q ?? null }));
+  },
+
+  async userStats(req: Request, res: Response) {
+    const { from, to } = parseDateRange(req.query);
+    res.json(await adminUserService.stats(from, to));
+  },
+
+  async getUser(req: Request, res: Response) {
+    const telegramId = Number(req.params.telegramId);
+    if (!Number.isFinite(telegramId)) throw new ValidationError("Mijoz ID raqami noto'g'ri");
+    res.json(await adminUserService.detail(telegramId));
+  },
+
+  async updateUser(req: Request, res: Response) {
+    const telegramId = Number(req.params.telegramId);
+    if (!Number.isFinite(telegramId)) throw new ValidationError("Mijoz ID raqami noto'g'ri");
+    const parsed = userUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError("Mijoz ma'lumotlari noto'g'ri", { issues: parsed.error.issues });
+    }
+    res.json(await adminUserService.setBlacklisted(telegramId, parsed.data.isBlacklisted));
   },
 };

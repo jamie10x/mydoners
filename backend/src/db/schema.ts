@@ -9,6 +9,7 @@ import {
   bigint,
   timestamp,
   doublePrecision,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const categories = pgTable("categories", {
@@ -30,40 +31,54 @@ export const products = pgTable("products", {
   imageUrl: text("image_url"),
 });
 
-export const users = pgTable("users", {
-  telegramId: bigint("telegram_id", { mode: "number" }).primaryKey(),
-  firstName: varchar("first_name", { length: 100 }),
-  lastName: varchar("last_name", { length: 100 }),
-  username: varchar("username", { length: 100 }),
-  phoneNumber: varchar("phone_number", { length: 20 }),
-  isPhoneVerified: boolean("is_phone_verified").default(false),
-  completedOrdersCount: integer("completed_orders_count").default(0),
-  cancelledOrdersCount: integer("cancelled_orders_count").default(0),
-  isBlacklisted: boolean("is_blacklisted").default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    telegramId: bigint("telegram_id", { mode: "number" }).primaryKey(),
+    firstName: varchar("first_name", { length: 100 }),
+    lastName: varchar("last_name", { length: 100 }),
+    username: varchar("username", { length: 100 }),
+    phoneNumber: varchar("phone_number", { length: 20 }),
+    isPhoneVerified: boolean("is_phone_verified").default(false),
+    completedOrdersCount: integer("completed_orders_count").default(0),
+    cancelledOrdersCount: integer("cancelled_orders_count").default(0),
+    isBlacklisted: boolean("is_blacklisted").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  // Backs the admin customer list's default "newest first" ordering and its
+  // "new customers in range" stat.
+  (table) => [index("users_created_at_idx").on(table.createdAt)],
+);
 
 // Up to 3 per user (enforced in savedAddressService, not here) — Home, Work,
 // or any custom label. Replaced the single home-address columns that used
 // to live on `users` once more than one saved spot was needed.
-export const savedAddresses = pgTable("saved_addresses", {
-  id: serial("id").primaryKey(),
-  userId: bigint("user_id", { mode: "number" })
-    .references(() => users.telegramId, { onDelete: "cascade" })
-    .notNull(),
-  label: varchar("label", { length: 50 }).notNull(),
-  latitude: doublePrecision("latitude").notNull(),
-  longitude: doublePrecision("longitude").notNull(),
-  landmarkAddress: text("landmark_address").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
+export const savedAddresses = pgTable(
+  "saved_addresses",
+  {
+    id: serial("id").primaryKey(),
+    userId: bigint("user_id", { mode: "number" })
+      .references(() => users.telegramId, { onDelete: "cascade" })
+      .notNull(),
+    label: varchar("label", { length: 50 }).notNull(),
+    latitude: doublePrecision("latitude").notNull(),
+    longitude: doublePrecision("longitude").notNull(),
+    landmarkAddress: text("landmark_address").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  // Every lookup is "addresses for this user" — the per-user count also feeds
+  // the admin list's incomplete-profile segment.
+  (table) => [index("saved_addresses_user_id_idx").on(table.userId)],
+);
 
 // order_status, payment_type, payment_status are enforced at the app layer via
 // the OrderStatus / PaymentType / PaymentStatus TS unions (see docs/openapi.yaml)
 // rather than a Postgres ENUM type, so adding a new status doesn't require a
 // migration — matches the roadmap's "enums for order_status/..." intent without
 // the schema-migration friction of native pg enums during early iteration.
-export const orders = pgTable("orders", {
+export const orders = pgTable(
+  "orders",
+  {
   id: serial("id").primaryKey(),
   userId: bigint("user_id", { mode: "number" }).references(() => users.telegramId),
   status: varchar("status", { length: 50 }).default("PENDING").notNull(),
@@ -105,33 +120,61 @@ export const orders = pgTable("orders", {
   idempotencyKey: varchar("idempotency_key", { length: 64 }).unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
+  },
+  (table) => [
+    // Composite, not just user_id: the admin customer list's per-user
+    // aggregates and its "last order at" / lapsed-customer checks all want
+    // this user's orders newest-first, which this serves without a sort.
+    index("orders_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
+    // Every date-range query: dashboard analytics, KDS today-summary/history.
+    index("orders_created_at_idx").on(table.createdAt.desc()),
+    // KDS's active-order queue and the courier backfill loop both filter here.
+    index("orders_status_idx").on(table.status),
+  ],
+);
 
-export const orderItems = pgTable("order_items", {
-  id: serial("id").primaryKey(),
-  orderId: integer("order_id").references(() => orders.id, { onDelete: "cascade" }),
-  productId: integer("product_id").references(() => products.id),
-  selectedVariant: varchar("selected_variant", { length: 50 }),
-  quantity: integer("quantity").notNull(),
-  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
-  totalPrice: numeric("total_price", { precision: 12, scale: 2 }).notNull(),
-});
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "cascade" }),
+    productId: integer("product_id").references(() => products.id),
+    selectedVariant: varchar("selected_variant", { length: 50 }),
+    quantity: integer("quantity").notNull(),
+    unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+    totalPrice: numeric("total_price", { precision: 12, scale: 2 }).notNull(),
+  },
+  // Every order read hydrates its items through this column (orderRepository's
+  // `inArray(orderItems.orderId, ...)` pattern) — it was a sequential scan.
+  (table) => [index("order_items_order_id_idx").on(table.orderId)],
+);
 
-export const orderLogs = pgTable("order_logs", {
-  id: serial("id").primaryKey(),
-  orderId: integer("order_id").references(() => orders.id, { onDelete: "cascade" }),
-  previousStatus: varchar("previous_status", { length: 50 }),
-  newStatus: varchar("new_status", { length: 50 }),
-  changedBy: varchar("changed_by", { length: 50 }), // SYSTEM | KITCHEN | COURIER | USER
-  timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow(),
-});
+export const orderLogs = pgTable(
+  "order_logs",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "cascade" }),
+    previousStatus: varchar("previous_status", { length: 50 }),
+    newStatus: varchar("new_status", { length: 50 }),
+    changedBy: varchar("changed_by", { length: 50 }), // SYSTEM | KITCHEN | COURIER | USER
+    timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow(),
+  },
+  // Backs the per-order status timeline in the admin customer detail view.
+  (table) => [index("order_logs_order_id_idx").on(table.orderId)],
+);
 
 // Not in the original blueprint's SQL — added to back docs/auth-contract.md #2
 // (Android KDS device authentication). One row per physical kitchen tablet.
-export const deviceKeys = pgTable("device_keys", {
-  id: serial("id").primaryKey(),
-  label: varchar("label", { length: 100 }).notNull(), // e.g. "kitchen-tablet-1"
-  apiKey: varchar("api_key", { length: 128 }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  revokedAt: timestamp("revoked_at", { withTimezone: true }),
-});
+export const deviceKeys = pgTable(
+  "device_keys",
+  {
+    id: serial("id").primaryKey(),
+    label: varchar("label", { length: 100 }).notNull(), // e.g. "kitchen-tablet-1"
+    apiKey: varchar("api_key", { length: 128 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  // Hit on every KDS REST call and every WebSocket handshake (requireAuth's
+  // fallback branch, and ws/socket.ts's resolveRoom) — both were unindexed.
+  (table) => [index("device_keys_api_key_idx").on(table.apiKey)],
+);

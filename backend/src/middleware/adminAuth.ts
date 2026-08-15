@@ -11,8 +11,11 @@ export function checkAdminPassword(password: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// 12h rather than 7d: this token now unlocks customer phone numbers and
+// delivery addresses, not just menu prices. A day's shift is the useful
+// lifetime; anything longer is a stale credential sitting in localStorage.
 export function signAdminToken(): string {
-  return jwt.sign({ admin: true }, env.jwtSecret, { expiresIn: "7d" });
+  return jwt.sign({ admin: true }, env.jwtSecret, { expiresIn: "12h" });
 }
 
 export function requireAdmin(req: Request, _res: Response, next: NextFunction) {

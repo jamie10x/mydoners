@@ -4,8 +4,15 @@ import { LoginPage } from "./pages/LoginPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { CustomersPage } from "./pages/CustomersPage";
 
-type Tab = "dashboard" | "categories" | "products";
+type Tab = "dashboard" | "customers" | "categories" | "products";
+
+function tabClass(active: boolean): string {
+  return `rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+    active ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
+  }`;
+}
 
 export function App() {
   const token = useAuthStore((s) => s.token);
@@ -36,34 +43,25 @@ export function App() {
 
       <div className="mx-auto max-w-5xl px-6">
         <nav className="flex gap-2 pt-5">
-          <button
-            onClick={() => setTab("dashboard")}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-              tab === "dashboard" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
-            }`}
-          >
+          <button onClick={() => setTab("dashboard")} className={tabClass(tab === "dashboard")}>
             Statistika
           </button>
-          <button
-            onClick={() => setTab("products")}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-              tab === "products" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
-            }`}
-          >
+          <button onClick={() => setTab("customers")} className={tabClass(tab === "customers")}>
+            Mijozlar
+          </button>
+          <button onClick={() => setTab("products")} className={tabClass(tab === "products")}>
             Mahsulotlar
           </button>
-          <button
-            onClick={() => setTab("categories")}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-              tab === "categories" ? "bg-brand text-white" : "bg-stone-200/70 text-stone-600"
-            }`}
-          >
+          <button onClick={() => setTab("categories")} className={tabClass(tab === "categories")}>
             Kategoriyalar
           </button>
         </nav>
 
         <main className="py-6">
-          {tab === "dashboard" ? <DashboardPage /> : tab === "products" ? <ProductsPage /> : <CategoriesPage />}
+          {tab === "dashboard" && <DashboardPage />}
+          {tab === "customers" && <CustomersPage />}
+          {tab === "products" && <ProductsPage />}
+          {tab === "categories" && <CategoriesPage />}
         </main>
       </div>
     </div>

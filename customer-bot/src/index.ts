@@ -1,7 +1,13 @@
 import { Bot, InlineKeyboard, webhookCallback } from "grammy";
 import { env } from "./config/env";
 import { BUSINESS } from "./business";
-import { maybeStartOnboarding, handleOnboardingText, handleOnboardingContact, handleOnboardingLocation } from "./onboarding";
+import {
+  maybeStartOnboarding,
+  handleOnboardingText,
+  handleOnboardingContact,
+  handleOnboardingLocation,
+  recordBotContact,
+} from "./onboarding";
 
 const bot = new Bot(env.botToken);
 
@@ -19,6 +25,9 @@ const helpKeyboard = new InlineKeyboard()
 
 bot.command("start", async (ctx) => {
   const telegramId = ctx.from?.id;
+  // Record the contact before anything else, so someone who starts the bot and
+  // immediately drops off is still counted and still reachable by @username.
+  if (ctx.from) await recordBotContact(ctx.from);
   if (telegramId && (await maybeStartOnboarding(telegramId, (text) => ctx.reply(text)))) {
     return; // conversation started (or already in progress) instead of the normal welcome
   }

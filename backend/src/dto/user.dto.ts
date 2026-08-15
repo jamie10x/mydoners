@@ -38,3 +38,11 @@ export const profileUpdateSchema = z
   .refine((data) => Object.keys(data).length > 0, { message: "At least one field is required" });
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+// Whatever Telegram hands the bot in ctx.from on /start — all optional, since
+// a user may have no surname and no public username.
+export const botContactSchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  username: z.string().optional(),
+});

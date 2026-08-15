@@ -50,6 +50,31 @@ export function isOnboarding(telegramId: number): boolean {
   return state.has(telegramId);
 }
 
+/**
+ * Records that this person has talked to the bot at all, with whatever
+ * Telegram gives us for free in ctx.from.
+ *
+ * Fire-and-forget on /start. Before this existed, a `users` row only appeared
+ * once someone opened the Mini App or answered several onboarding questions —
+ * so anyone who started the bot and drifted off was invisible in every count,
+ * and their @username (often the only way to reach them) was thrown away.
+ */
+export async function recordBotContact(from: {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+}): Promise<void> {
+  await backendFetch(`/users/${from.id}/seen`, {
+    method: "POST",
+    body: JSON.stringify({
+      firstName: from.first_name,
+      lastName: from.last_name,
+      username: from.username,
+    }),
+  }).catch(() => {});
+}
+
 /** Called from /start. Returns true if it started the conversation (caller should skip the normal welcome message). */
 export async function maybeStartOnboarding(telegramId: number, reply: (text: string) => Promise<unknown>): Promise<boolean> {
   if (state.has(telegramId)) return true; // already mid-conversation — don't restart it

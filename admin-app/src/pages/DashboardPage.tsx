@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Order, OrderStatus, SalesSummary } from "@mydoners/shared-contracts";
+import { StatCard } from "../components/StatCard";
+import { STATUS_LABELS, STATUS_STYLES, formatShortDate, formatSom, isoDate } from "../lib/format";
 
 const STATUS_OPTIONS: OrderStatus[] = [
   "PENDING",
@@ -11,47 +13,6 @@ const STATUS_OPTIONS: OrderStatus[] = [
   "DELIVERED",
   "CANCELLED",
 ];
-
-const STATUS_STYLES: Record<OrderStatus, string> = {
-  PENDING: "bg-stone-200 text-stone-600",
-  CONFIRMED: "bg-blue-100 text-blue-700",
-  COOKING: "bg-amber-100 text-amber-700",
-  READY_FOR_DELIVERY: "bg-amber-100 text-amber-700",
-  ON_THE_WAY: "bg-indigo-100 text-indigo-700",
-  DELIVERED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-700",
-};
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  PENDING: "Kutilmoqda",
-  CONFIRMED: "Qabul qilindi",
-  COOKING: "Tayyorlanmoqda",
-  READY_FOR_DELIVERY: "Yetkazishga tayyor",
-  ON_THE_WAY: "Yetkazilmoqda",
-  DELIVERED: "Yetkazildi",
-  CANCELLED: "Bekor qilindi",
-};
-
-// Space-grouped digits + "so'm" — matches mini-app's src/lib/format.ts,
-// the way prices are written locally (not en-US commas + "UZS").
-function formatSom(amount: number): string {
-  const grouped = Math.round(amount)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return `${grouped} so'm`;
-}
-
-// Numeric, no locale dependency — avoids leaking English month names
-// ("Jul 28") the way Intl's "en-US" formatting would.
-function formatShortDate(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
 
 function defaultFrom(): string {
   const d = new Date();
@@ -230,11 +191,3 @@ export function DashboardPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-stone-400">{label}</p>
-      <p className="text-2xl font-extrabold text-stone-900">{value}</p>
-    </div>
-  );
-}

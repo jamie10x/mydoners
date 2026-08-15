@@ -8,6 +8,7 @@ import {
   locationSubmitSchema,
   savedAddressSchema,
   profileUpdateSchema,
+  botContactSchema,
 } from "../dto/user.dto";
 import { ForbiddenError, ValidationError, NotFoundError } from "../errors/AppError";
 
@@ -40,6 +41,35 @@ export const userController = {
     const user = await userRepository.findByTelegramId(telegramId);
     if (!user) throw new NotFoundError(`Foydalanuvchi ${telegramId} topilmadi`);
     res.json({ user: await mapPublicUser(user) });
+  },
+
+  /**
+   * "This telegramId has interacted with the bot." Called on /start.
+   *
+   * Without it, a `users` row only appears once someone opens the Mini App,
+   * saves an address, or answers far enough into onboarding — so anyone who
+   * starts the bot and drops off was invisible: uncounted in any total, and
+   * with their Telegram @username (the one way to contact them when they
+   * never gave a phone number) discarded. Reuses upsertFromTelegram, which
+   * fills names only on insert and keeps username fresh thereafter.
+   */
+  async recordContact(req: Request, res: Response) {
+    if (req.actor?.type !== "bot") {
+      throw new ForbiddenError("Faqat bot foydalanuvchi aloqasini qayd eta oladi");
+    }
+    const telegramId = Number(req.params.telegramId);
+    const parsed = botContactSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError("Foydalanuvchi ma'lumotlari noto'g'ri", { issues: parsed.error.issues });
+    }
+
+    await userRepository.upsertFromTelegram({
+      telegramId,
+      firstName: parsed.data.firstName ?? "",
+      lastName: parsed.data.lastName,
+      username: parsed.data.username,
+    });
+    res.status(204).send();
   },
 
   // Bot-driven onboarding (first name / last name / phone) — see customer-bot.
