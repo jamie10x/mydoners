@@ -224,6 +224,19 @@ export function OrderTrackingPage() {
           <p className="mt-1 text-sm text-stone-500">{t("deliveredSubtitle")}</p>
         </div>
 
+        <RatingBlock order={order} />
+
+        {order.deliveryProofPhotoUrl && (
+          <div className="w-full">
+            <img
+              src={order.deliveryProofPhotoUrl}
+              alt={t("deliveryProofAlt")}
+              className="max-h-56 w-full rounded-2xl border border-stone-100 object-cover shadow-sm"
+            />
+            <p className="mt-1.5 text-xs text-stone-400">{t("deliveryProofCaption")}</p>
+          </div>
+        )}
+
         <div className="w-full rounded-2xl border border-stone-100 bg-white p-4 text-left shadow-sm">
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">{t("receiptTitle")}</h2>
           {order.items.map((item) => (
@@ -343,6 +356,52 @@ export function OrderTrackingPage() {
       <button onClick={() => goTo("menu")} className="text-sm font-semibold text-stone-400 underline">
         {t("orderSomethingElse")}
       </button>
+    </div>
+  );
+}
+
+/**
+ * One-tap 1–5 rating on the delivered screen.
+ *
+ * Optimistic: the stars fill immediately and the block switches to a thank-you
+ * without waiting for the round trip. A failed submit is deliberately silent —
+ * nobody needs an error dialog about a rating, and the backend rejects repeats
+ * anyway, so the worst case is a score that didn't save.
+ */
+function RatingBlock({ order }: { order: Order }) {
+  const [submitted, setSubmitted] = useState<number | null>(order.rating);
+
+  if (submitted !== null) {
+    return (
+      <div className="w-full text-center">
+        <p className="text-lg" aria-label={`${submitted} / 5`}>
+          {"★".repeat(submitted)}
+          <span className="text-stone-300">{"★".repeat(5 - submitted)}</span>
+        </p>
+        <p className="mt-0.5 text-xs text-stone-400">{t("rateOrderThanks")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full text-center">
+      <p className="mb-1 text-sm font-medium text-stone-500">{t("rateOrderTitle")}</p>
+      <div className="flex justify-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            aria-label={`${star} / 5`}
+            onClick={() => {
+              setSubmitted(star);
+              hapticSuccess();
+              api.post(`/orders/${order.id}/rating`, { rating: star }).catch(() => {});
+            }}
+            className="px-1 text-3xl leading-none text-stone-300 transition-colors active:text-amber-400"
+          >
+            ★
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

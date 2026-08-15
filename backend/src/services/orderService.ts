@@ -55,6 +55,7 @@ function toApiOrder(order: OrderRow, items: OrderItemRow[]): Order {
     riskLevel: order.riskLevel as Order["riskLevel"],
     cashConfirmationCode: order.cashConfirmationCode,
     deliveryProofPhotoUrl: order.deliveryProofPhotoUrl,
+    rating: order.rating ?? null,
     createdAt: order.createdAt!.toISOString(),
     updatedAt: order.updatedAt!.toISOString(),
   };
@@ -463,6 +464,19 @@ export const orderService = {
         .catch((err) => console.error(`Failed to stop live location for order ${orderId}:`, err));
     }
 
+    return this.getOrder(orderId);
+  },
+
+  /**
+   * Customer's 1–5 rating of a delivered order. Idempotent by construction:
+   * the repository only writes when the order is DELIVERED and unrated, so a
+   * second submission is a no-op rather than an overwrite.
+   */
+  async rateOrder(orderId: number, rating: number): Promise<Order> {
+    const stored = await orderRepository.setRating(orderId, rating);
+    if (!stored) {
+      throw new ConflictError("Bu buyurtmani hozir baholab bo'lmaydi", { orderId });
+    }
     return this.getOrder(orderId);
   },
 

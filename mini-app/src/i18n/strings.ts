@@ -136,6 +136,10 @@ export const STR = {
   // Delivered celebration
   deliveredTitle: "Yetkazib berildi!",
   deliveredSubtitle: "Yoqimli ishtaha! Buyurtmangizdan mamnun bo'lganingizni umid qilamiz.",
+  deliveryProofAlt: "Yetkazib berish tasdig'i",
+  deliveryProofCaption: "Kuryer yetkazganda olgan surat",
+  rateOrderTitle: "Buyurtmani baholang",
+  rateOrderThanks: "Baholaganingiz uchun rahmat!",
   receiptTitle: "Chek",
   receiptTotal: "Jami",
   orderAgain: "Yana shu buyurtmani berish",

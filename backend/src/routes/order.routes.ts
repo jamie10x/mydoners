@@ -19,6 +19,7 @@ orderRoutes.get("/:orderId", requireAuth, asyncHandler(orderController.get));
 orderRoutes.patch("/:orderId/status", requireAuth, asyncHandler(orderController.updateStatus));
 orderRoutes.get("/:orderId/risk", requireAuth, asyncHandler(orderController.getRisk));
 orderRoutes.get("/:orderId/courier-location", requireAuth, asyncHandler(orderController.courierLocation));
+orderRoutes.post("/:orderId/rating", requireAuth, asyncHandler(orderController.rate));
 orderRoutes.post(
   "/:orderId/delivery-proof",
   requireAuth,

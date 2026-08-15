@@ -34,3 +34,7 @@ export const updateOrderStatusSchema = z.object({
 });
 
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
+
+export const rateOrderSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+});

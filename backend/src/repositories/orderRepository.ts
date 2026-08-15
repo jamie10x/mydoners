@@ -251,6 +251,35 @@ export const orderRepository = {
     return claimed.length > 0;
   },
 
+  // Deliberately a focused read rather than exposing statusMessageId on the
+  // public Order contract — it's a Telegram implementation detail that the
+  // Mini App and KDS have no business seeing.
+  async getStatusMessageId(orderId: number): Promise<number | null> {
+    const [row] = await db
+      .select({ statusMessageId: orders.statusMessageId })
+      .from(orders)
+      .where(eq(orders.id, orderId));
+    return row?.statusMessageId ?? null;
+  },
+
+  async setStatusMessageId(orderId: number, messageId: number) {
+    await db.update(orders).set({ statusMessageId: messageId }).where(eq(orders.id, orderId));
+  },
+
+  /**
+   * Records a rating, but only on a delivered order that has none yet. The
+   * conditions live in the WHERE clause so a double-tap or a replayed request
+   * can't overwrite an existing score — the second write simply matches no row.
+   */
+  async setRating(orderId: number, rating: number): Promise<boolean> {
+    const updated = await db
+      .update(orders)
+      .set({ rating, ratedAt: new Date() })
+      .where(and(eq(orders.id, orderId), eq(orders.status, "DELIVERED"), isNull(orders.rating)))
+      .returning({ id: orders.id });
+    return updated.length > 0;
+  },
+
   async clearLiveLocationMessage(orderId: number) {
     await db
       .update(orders)

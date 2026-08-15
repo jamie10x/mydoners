@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Order } from "@mydoners/shared-contracts";
 import { api, ApiError } from "../api/client";
 import { useUiStore } from "../store/uiStore";
+import { isDeepLinkedOrder } from "../lib/deepLink";
 
 const TERMINAL_STATUSES: Order["status"][] = ["DELIVERED", "CANCELLED"];
 
@@ -23,6 +24,14 @@ export function useResumeActiveOrder(authReady: boolean) {
     // 401s and gets misread as "that order doesn't exist anymore".
     if (checked.current || !authReady || !activeOrderId) return;
     checked.current = true;
+
+    // Opened from an order link — the customer asked for this specific order,
+    // so show it even if it's finished (receipt, proof photo, rating). The
+    // tracking page fetches it itself, so there's nothing to validate here.
+    if (isDeepLinkedOrder()) {
+      goTo("tracking");
+      return;
+    }
 
     api
       .get<Order>(`/orders/${activeOrderId}`)

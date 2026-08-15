@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { init } from "@telegram-apps/sdk";
 import { App } from "./App";
+import { applyOrderDeepLink } from "./lib/deepLink";
 import "./index.css";
 
 if (import.meta.env.DEV) {
@@ -30,6 +31,9 @@ try {
 } catch (err) {
   console.warn("[sdk] init() failed — not running inside Telegram?", err);
 }
+
+// Before first render, so the tracking screen is already the right order.
+applyOrderDeepLink();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

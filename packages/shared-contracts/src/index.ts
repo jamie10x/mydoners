@@ -56,6 +56,8 @@ export interface Order {
   riskLevel: RiskLevel;
   cashConfirmationCode: string | null;
   deliveryProofPhotoUrl: string | null;
+  /** 1–5, set once by the customer after delivery. Null when unrated. */
+  rating: number | null;
   createdAt: string;
   updatedAt: string;
 }

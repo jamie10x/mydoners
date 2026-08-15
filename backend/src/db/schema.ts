@@ -127,6 +127,17 @@ export const orders = pgTable(
   // concurrent ticks from each sending one.
   courierLiveMessageId: integer("courier_live_message_id"),
   courierLiveStartedAt: timestamp("courier_live_started_at", { withTimezone: true }),
+  // Telegram message_id of this order's status message. One message is edited
+  // in place through the whole lifecycle instead of sending a fresh one per
+  // transition, which used to leave six near-identical messages in the chat.
+  // NULL means none exists yet (or the last edit found it gone), in which case
+  // the next update sends a new one.
+  statusMessageId: integer("status_message_id"),
+  // 1–5, set once by the customer after delivery. NULL means not rated (which
+  // is the common case — most people never do, so nothing should depend on it
+  // being present).
+  rating: integer("rating"),
+  ratedAt: timestamp("rated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },

@@ -1,5 +1,6 @@
 import type { Order, OrderStatus } from "@mydoners/shared-contracts";
-import { sendTelegramMessage } from "../core/telegram";
+import { editTelegramMessage, sendTelegramMessage } from "../core/telegram";
+import { orderRepository } from "../repositories/orderRepository";
 import { env } from "../config/env";
 
 function formatSom(amount: number): string {
@@ -9,38 +10,79 @@ function formatSom(amount: number): string {
   return `${grouped} so'm`;
 }
 
-// Pushed to the customer via @mydoner_bot on order creation and every status
-// change — the Mini App's own tracking screen can't be relied on to still be
-// open (Telegram doesn't guarantee the WebView survives being backgrounded),
-// so the bot chat is the durable channel for "what's happening with my order."
-const trackOrderButton = {
-  inline_keyboard: [[{ text: "Buyurtmani kuzatish", web_app: { url: env.miniAppUrl } }]],
+// Per-order rather than a shared constant: the Mini App reads ?order= on
+// launch (see mini-app/src/lib/deepLink.ts) so the button lands on the order
+// the message is about, instead of dropping the customer on the menu.
+function trackOrderButton(orderId: number) {
+  const separator = env.miniAppUrl.includes("?") ? "&" : "?";
+  return {
+    inline_keyboard: [
+      [{ text: "Buyurtmani kuzatish", web_app: { url: `${env.miniAppUrl}${separator}order=${orderId}` } }],
+    ],
+  };
+}
+
+// The one line that changes as the order progresses. PENDING is the initial
+// state, so it has an entry here too — unlike before, when it was covered by a
+// separate "received" message.
+const STATUS_LINES: Record<OrderStatus, string> = {
+  PENDING: "⏳ Restoran ko'rib chiqmoqda — tasdiqlanishi bilan xabar beramiz.",
+  CONFIRMED: "✅ Tasdiqlandi — tayyorlanish boshlanmoqda!",
+  COOKING: "🍳 Oshxonada tayyorlanmoqda.",
+  READY_FOR_DELIVERY: "📦 Tayyor — kuryer kutilmoqda.",
+  ON_THE_WAY: "🚴 Yo'lda! Kuryerni ilovada kuzatib boring.",
+  DELIVERED: "✅ Yetkazib berildi. Yoqimli ishtaha!",
+  CANCELLED: "❌ Buyurtma bekor qilindi.",
 };
 
-const STATUS_MESSAGES: Partial<Record<OrderStatus, string>> = {
-  // Kitchen tapped Accept after checking stock — this is the real "your
-  // order is happening" moment now that every order starts PENDING.
-  CONFIRMED: "✅ #{id}-buyurtmangiz tasdiqlandi — tayyorlanish boshlanmoqda!",
-  COOKING: "🍳 #{id}-buyurtmangiz oshxonada tayyorlanmoqda.",
-  READY_FOR_DELIVERY: "📦 #{id}-buyurtmangiz tayyor — kuryer kutilmoqda.",
-  ON_THE_WAY: "🚴 #{id}-buyurtmangiz yo'lda!",
-  DELIVERED: "✅ #{id}-buyurtmangiz yetkazib berildi. Yoqimli ishtaha!",
-  CANCELLED: "❌ #{id}-buyurtmangiz bekor qilindi.",
-};
+function composeMessage(order: Order, status: OrderStatus): string {
+  return (
+    `🌯 <b>#${order.id}-buyurtma</b> · ${formatSom(order.totalAmount)}\n\n` + STATUS_LINES[status]
+  );
+}
+
+/**
+ * Keeps exactly one Telegram message per order, rewritten on each status
+ * change.
+ *
+ * Previously every transition sent a fresh message, so a normal order left six
+ * near-identical notifications in the customer's chat. Editing in place keeps
+ * the chat clean and means the newest state is always the one they're looking
+ * at. If the message is gone (deleted, or too old for Telegram to edit) we
+ * fall back to sending a new one and remember that id instead.
+ */
+async function upsertStatusMessage(telegramId: number, order: Order, status: OrderStatus): Promise<void> {
+  const text = composeMessage(order, status);
+  const markup = trackOrderButton(order.id);
+  const existingId = await orderRepository.getStatusMessageId(order.id);
+
+  if (existingId !== null) {
+    const outcome = await editTelegramMessage(telegramId, existingId, text, {
+      parseMode: "HTML",
+      replyMarkup: markup,
+    });
+    // "not_modified" means the customer is already seeing this exact text.
+    if (outcome === "ok" || outcome === "not_modified") return;
+    if (outcome === "failed") return; // transient — don't spawn a duplicate message
+  }
+
+  const messageId = await sendTelegramMessage(telegramId, text, {
+    parseMode: "HTML",
+    replyMarkup: markup,
+  });
+  if (messageId !== null) {
+    await orderRepository
+      .setStatusMessageId(order.id, messageId)
+      .catch((err) => console.error(`Failed to store status message id for order ${order.id}:`, err));
+  }
+}
 
 export const orderNotificationService = {
   async notifyOrderReceived(telegramId: number, order: Order): Promise<void> {
-    const text =
-      `🌯 <b>#${order.id}-buyurtmangiz qabul qilindi!</b>\n` +
-      `Jami: ${formatSom(order.totalAmount)}\n\n` +
-      `Restoran hozir ko'rib chiqmoqda — tasdiqlanishi bilan sizga xabar beramiz.`;
-    await sendTelegramMessage(telegramId, text, { parseMode: "HTML", replyMarkup: trackOrderButton });
+    await upsertStatusMessage(telegramId, order, order.status);
   },
 
   async notifyStatusChange(telegramId: number, order: Order, status: OrderStatus): Promise<void> {
-    const template = STATUS_MESSAGES[status];
-    if (!template) return; // PENDING is covered by the "received" message above
-    const text = template.replace("{id}", String(order.id));
-    await sendTelegramMessage(telegramId, text, { replyMarkup: trackOrderButton });
+    await upsertStatusMessage(telegramId, order, status);
   },
 };

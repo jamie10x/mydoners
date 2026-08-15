@@ -5,11 +5,12 @@ import { enqueueRetry, startNotificationWorker, type NotificationJob } from "./n
 // simplest path for one-off backend-initiated messages (order updates,
 // location requests) that don't need customer-bot's own process involved.
 
+/** Returns the new message_id, or null if the send failed. */
 async function trySend(
   chatId: number,
   text: string,
   options: { replyMarkup?: unknown; parseMode?: "HTML" } = {},
-): Promise<boolean> {
+): Promise<number | null> {
   const res = await fetch(`https://api.telegram.org/bot${env.telegramBotToken}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -20,8 +21,12 @@ async function trySend(
       reply_markup: options.replyMarkup,
     }),
   });
-  if (!res.ok) console.error(`[telegram] sendMessage failed for chat ${chatId}:`, await res.text());
-  return res.ok;
+  if (!res.ok) {
+    console.error(`[telegram] sendMessage failed for chat ${chatId}:`, await res.text());
+    return null;
+  }
+  const body = (await res.json()) as { result?: { message_id?: number } };
+  return body.result?.message_id ?? null;
 }
 
 /**
@@ -34,9 +39,9 @@ export async function sendTelegramMessage(
   chatId: number,
   text: string,
   options: { replyMarkup?: unknown; parseMode?: "HTML" } = {},
-): Promise<void> {
-  const ok = await trySend(chatId, text, options).catch(() => false);
-  if (!ok) {
+): Promise<number | null> {
+  const messageId = await trySend(chatId, text, options).catch(() => null);
+  if (messageId === null) {
     await enqueueRetry({
       chatId,
       text,
@@ -45,11 +50,46 @@ export async function sendTelegramMessage(
       attempt: 1,
     }).catch((err) => console.error("[telegram] failed to enqueue retry:", err));
   }
+  return messageId;
+}
+
+/**
+ * Rewrites an existing message. Classified like the live-location edit so the
+ * caller can tell "nothing to do" from "that message is gone, send a fresh one".
+ */
+export async function editTelegramMessage(
+  chatId: number,
+  messageId: number,
+  text: string,
+  options: { replyMarkup?: unknown; parseMode?: "HTML" } = {},
+): Promise<LiveEditOutcome> {
+  const response = await callTelegram("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    text,
+    parse_mode: options.parseMode,
+    reply_markup: options.replyMarkup,
+  });
+  if (response.ok) return "ok";
+
+  const description = (response.description ?? "").toLowerCase();
+  if (description.includes("not modified")) return "not_modified";
+  if (
+    description.includes("message to edit not found") ||
+    description.includes("message can't be edited") ||
+    description.includes("message_id_invalid") ||
+    description.includes("bot was blocked")
+  ) {
+    return "expired";
+  }
+  console.error(`[telegram] editMessageText failed for chat ${chatId}:`, response.description);
+  return "failed";
 }
 
 export function startTelegramRetryWorker(): void {
-  startNotificationWorker((job: NotificationJob) =>
-    trySend(job.chatId, job.text, { parseMode: job.parseMode, replyMarkup: job.replyMarkup }),
+  startNotificationWorker(
+    async (job: NotificationJob) =>
+      (await trySend(job.chatId, job.text, { parseMode: job.parseMode, replyMarkup: job.replyMarkup })) !== null,
   );
 }
 

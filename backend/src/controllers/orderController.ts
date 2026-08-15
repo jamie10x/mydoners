@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import type { OrderStatus } from "@mydoners/shared-contracts";
 import { orderService } from "../services/orderService";
 import { changedByFor } from "../domain/orderTransitions";
-import { createOrderSchema, updateOrderStatusSchema } from "../dto/order.dto";
+import { createOrderSchema, rateOrderSchema, updateOrderStatusSchema } from "../dto/order.dto";
 import { ForbiddenError, ValidationError } from "../errors/AppError";
 import { env } from "../config/env";
 
@@ -127,6 +127,20 @@ export const orderController = {
       await orderService.assertOwnedBy(orderId, req.actor.telegramId);
     }
     res.json(await orderService.getCourierLocation(orderId));
+  },
+
+  async rate(req: Request, res: Response) {
+    const orderId = Number(req.params.orderId);
+    if (req.actor?.type !== "user") {
+      throw new ForbiddenError("Faqat mijoz o'z buyurtmasini baholay oladi");
+    }
+    await orderService.assertOwnedBy(orderId, req.actor.telegramId);
+
+    const parsed = rateOrderSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError("Baho 1 dan 5 gacha bo'lishi kerak", { issues: parsed.error.issues });
+    }
+    res.json(await orderService.rateOrder(orderId, parsed.data.rating));
   },
 
   async getRisk(req: Request, res: Response) {
