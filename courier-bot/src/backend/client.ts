@@ -63,4 +63,21 @@ export const backendClient = {
     }
     return res.json() as Promise<Order>;
   },
+
+  /**
+   * Relays the courier's current position. Fire-and-forget by design — a
+   * failed position report must never surface as an error to someone who is
+   * riding a scooter, and the next update is seconds away.
+   */
+  async reportLocation(input: { latitude: number; longitude: number; isLive: boolean }): Promise<void> {
+    const res = await fetch(`${env.backendUrl}/courier/location`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.courierBotApiKey}`,
+      },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) throw new Error(`Backend request failed: ${res.status} /courier/location`);
+  },
 };

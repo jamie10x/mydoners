@@ -254,6 +254,57 @@ paths:
                 $ref: "#/components/schemas/RiskAssessment"
 
 
+  /orders/{orderId}/courier-location:
+    get:
+      tags: [courier]
+      summary: Courier's current position for this order
+      description: >
+        Cold-start companion to the courier.location WebSocket event, which only
+        fires on movement — without this a customer opening the Mini App between
+        two position updates would see an empty map. Returns null unless the
+        order is ON_THE_WAY and a recent position exists. Customers may only read
+        their own orders.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdParam"
+      responses:
+        "200":
+          description: Position, or null when unavailable
+          content:
+            application/json:
+              schema:
+                nullable: true
+                $ref: "#/components/schemas/CourierLocation"
+
+  /courier/location:
+    post:
+      tags: [courier]
+      summary: Report the courier's current position (courier bot only)
+      description: >
+        Relayed from Telegram's live-location stream by the courier bot, which
+        throttles to at most one call per 10s. Fans out to every ON_THE_WAY order
+        as a courier.location event plus an edit of that customer's Telegram
+        live-location message. Best-effort: a failure here must never surface to
+        the courier mid-ride.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [latitude, longitude]
+              properties:
+                latitude: { type: number, format: double }
+                longitude: { type: number, format: double }
+                isLive:
+                  type: boolean
+                  default: true
+                  description: false for a one-shot dropped pin, which never drives an ETA.
+      responses:
+        "204":
+          description: Accepted
+        "403":
+          description: Caller is not the courier bot
+
   /orders/{orderId}/dispatch:
     patch:
       tags: [courier]
@@ -577,6 +628,28 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    CourierLocation:
+      type: object
+      description: >
+        Mirrors CourierLocationData in packages/shared-contracts and the
+        courier.location WebSocket payload — keep all three in step.
+      properties:
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        reportedAt:
+          type: string
+          format: date-time
+          description: When the courier's device reported it, not when we relayed it.
+        isLive: { type: boolean }
+        distanceMeters:
+          type: integer
+          nullable: true
+          description: Straight-line distance to this order's destination.
+        etaMinutes:
+          type: integer
+          nullable: true
+          description: Null when the share isn't live, or when several orders are out at once.
 
     RiskAssessment:
       type: object

@@ -1,18 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap, Marker, AttributionControl, setWorkerUrl } from "maplibre-gl";
-import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import "maplibre-gl/dist/maplibre-gl.css";
+import { Map as MapLibreMap, Marker, AttributionControl } from "maplibre-gl";
 import { t } from "../i18n/strings";
-
-// MapLibre resolves its worker script relative to its own module URL at
-// runtime (`new URL('./maplibre-gl-worker.mjs', import.meta.url)`), which
-// only works when its dist files are served as-is. Once Vite bundles
-// maplibre-gl into a hashed chunk, that relative path 404s (masked as a 200
-// text/html by the SPA fallback) and the map silently never gets tiles —
-// same failure shape as the earlier broken-image bug. `?worker&url` makes
-// Vite bundle the worker's own internal imports into one self-contained
-// file and hand back its real built URL, which we hand to MapLibre directly.
-setWorkerUrl(maplibreWorkerUrl);
+// Importing this module also performs MapLibre's worker-URL setup — see the
+// comment there; without it the map silently never loads tiles in a build.
+import { MAP_STYLE } from "../lib/maplibre";
 
 export interface Coords {
   latitude: number;
@@ -31,12 +22,6 @@ interface MapPickerProps {
 // and nothing else has set a location yet, so the map has somewhere to
 // center rather than the middle of the ocean (0,0).
 const FALLBACK_CENTER: Coords = { latitude: 41.0012, longitude: 71.6734 };
-
-// OpenFreeMap — genuinely free (no API key, no signup, no usage cap, funded
-// by donations rather than a freemium tier that can start charging later).
-// Pairs with MapLibre GL JS (the open-source fork of Mapbox GL JS), which is
-// what renders OpenFreeMap's vector tiles.
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
 /**
  * Draggable delivery-location picker, backed by real map tiles. Drag the pin

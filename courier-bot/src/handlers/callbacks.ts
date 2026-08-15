@@ -1,6 +1,8 @@
 import type { Bot, Context } from "grammy";
 import { backendClient } from "../backend/client";
 import { courierState, type PendingDelivery } from "../state/pendingDeliveries";
+import { liveLocationState } from "../state/liveLocation";
+import { LIVE_LOCATION_PROMPT } from "./location";
 import { env } from "../config/env";
 
 async function submitDelivery(ctx: Context, orderId: number, pending: PendingDelivery, cashCode: string | null) {
@@ -28,6 +30,14 @@ export function registerCallbackHandlers(bot: Bot) {
     await ctx.answerCallbackQuery({ text: `#${orderId}-buyurtma yo'lda deb belgilandi` });
     await ctx.editMessageReplyMarkup();
     await ctx.reply(`🚴 Yo'lda — #${orderId}-buyurtma`);
+
+    // A delivery just started with no live share running — this is the moment
+    // the reminder is actually useful. Rate-limited to once an hour so a busy
+    // evening doesn't turn into nagging.
+    if (liveLocationState.shouldPrompt()) {
+      liveLocationState.markPrompted();
+      await ctx.reply(LIVE_LOCATION_PROMPT, { parse_mode: "HTML" });
+    }
   });
 
   bot.callbackQuery(/^delivered:(\d+)$/, async (ctx) => {

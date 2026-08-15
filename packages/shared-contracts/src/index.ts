@@ -115,6 +115,24 @@ export interface OrderCreatedData {
   riskLevel: RiskLevel;
 }
 
+/**
+ * Courier's live position during a delivery, pushed to the ordering customer
+ * only. There is one courier, so the position is shift-scoped rather than
+ * per-order — every in-flight order sees the same coordinates, with distance
+ * and ETA computed against its own destination.
+ */
+export interface CourierLocationData {
+  latitude: number;
+  longitude: number;
+  /** When the courier's device reported this, not when we relayed it. */
+  reportedAt: string;
+  /** false = a one-shot dropped pin rather than a live share; ages instantly. */
+  isLive: boolean;
+  distanceMeters: number | null;
+  /** null when not live, or when more than one order is out for delivery. */
+  etaMinutes: number | null;
+}
+
 export interface OrderCancelledData {
   cancelledBy: ChangedBy;
   reason: string | null;

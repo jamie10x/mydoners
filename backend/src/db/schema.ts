@@ -118,6 +118,15 @@ export const orders = pgTable(
   // what makes a double-submit (retry after timeout, double-tap) return the
   // already-created order instead of charging the customer twice.
   idempotencyKey: varchar("idempotency_key", { length: 64 }).unique(),
+  // Telegram message_id of the customer's live-location bubble for this order.
+  // In Postgres rather than Redis specifically because it must survive a
+  // backend redeploy (CI ships on every push, including mid-delivery) — if it
+  // were lost we could never call stopMessageLiveLocation, leaving a pin the
+  // customer's chat shows as "live" for the rest of its period. NULL means no
+  // bubble is open, and doubles as the idempotency latch that stops two
+  // concurrent ticks from each sending one.
+  courierLiveMessageId: integer("courier_live_message_id"),
+  courierLiveStartedAt: timestamp("courier_live_started_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },

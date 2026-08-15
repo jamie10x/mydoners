@@ -92,4 +92,9 @@ export const realtime = {
   deliveryConfirmed<T>(orderId: number, userTelegramId: number, data: T) {
     emit([`user:${userTelegramId}`], "delivery.confirmed", orderId, data);
   },
+  // Customer's room only. The kitchen has no use for a moving courier pin and
+  // the courier is the producer, so broadcasting wider would be pure noise.
+  courierLocation<T>(orderId: number, userTelegramId: number, data: T) {
+    emit([`user:${userTelegramId}`], "courier.location", orderId, data);
+  },
 };

@@ -64,6 +64,13 @@
       "when": 1786738763626,
       "tag": "0008_fearless_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786768159832,
+      "tag": "0009_illegal_mysterio",
+      "breakpoints": true
     }
   ]
 }

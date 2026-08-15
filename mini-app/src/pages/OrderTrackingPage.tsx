@@ -4,6 +4,8 @@ import { api, ApiError } from "../api/client";
 import { useUiStore } from "../store/uiStore";
 import { useCartStore } from "../store/cartStore";
 import { useRealtimeOrder } from "../hooks/useRealtimeOrder";
+import { useCourierLocation } from "../hooks/useCourierLocation";
+import { DeliveryMap } from "../components/DeliveryMap";
 import { ErrorState } from "../components/ErrorState";
 import { Confetti } from "../components/Confetti";
 import { hapticSuccess } from "../lib/haptics";
@@ -63,6 +65,10 @@ export function OrderTrackingPage() {
   }, [activeOrderId, reloadKey]);
 
   const { status: liveStatus, connected } = useRealtimeOrder(activeOrderId, order?.status ?? "PENDING");
+  const { position: courierPosition, stale: courierStale } = useCourierLocation(
+    activeOrderId,
+    liveStatus === "ON_THE_WAY",
+  );
 
   useEffect(() => {
     if (!order) return;
@@ -287,6 +293,32 @@ export function OrderTrackingPage() {
           );
         })}
       </div>
+
+      {liveStatus === "ON_THE_WAY" && (
+        <section>
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400">
+            {t("courierMapTitle")}
+          </h2>
+          <DeliveryMap
+            courier={courierPosition}
+            destination={{ latitude: order.latitude, longitude: order.longitude }}
+            stale={courierStale}
+          />
+          <p className="mt-2 text-center text-sm font-medium text-stone-500">
+            {!courierPosition
+              ? t("courierNoLocation")
+              : courierStale
+                ? t("courierLocationStale", {
+                    min: Math.round((Date.now() - Date.parse(courierPosition.reportedAt)) / 60000),
+                  })
+                : courierPosition.etaMinutes !== null
+                  ? t("courierEta", { min: Math.max(5 * Math.round(courierPosition.etaMinutes / 5), 1) })
+                  : courierPosition.distanceMeters !== null
+                    ? t("courierDistance", { km: (courierPosition.distanceMeters / 1000).toFixed(1) })
+                    : t("courierMultipleOrders")}
+          </p>
+        </section>
+      )}
 
       {order.cashConfirmationCode && (liveStatus === "READY_FOR_DELIVERY" || liveStatus === "ON_THE_WAY") && (
         <div className="rounded-xl bg-stone-100 p-3 text-center">

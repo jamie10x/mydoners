@@ -2,6 +2,7 @@ import { Bot, InlineKeyboard, webhookCallback } from "grammy";
 import type { CourierAssignedData } from "@mydoners/shared-contracts";
 import { env } from "./config/env";
 import { registerCallbackHandlers } from "./handlers/callbacks";
+import { registerLocationHandlers } from "./handlers/location";
 import { connectToBackend } from "./ws/socketClient";
 import { formatOrderCard, orderKeyboard } from "./orderCard";
 import { courierState } from "./state/pendingDeliveries";
@@ -10,6 +11,9 @@ import { backendClient } from "./backend/client";
 const bot = new Bot(env.botToken);
 
 registerCallbackHandlers(bot);
+// Disjoint filters from the delivery-proof handlers in callbacks.ts
+// (message:photo / message:text), so registration order doesn't matter.
+registerLocationHandlers(bot);
 
 /**
  * Sends the dispatch card + native location pin, records local state, and

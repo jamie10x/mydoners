@@ -14,6 +14,7 @@ import { ForbiddenError } from "../errors/AppError";
 import { redis } from "../core/redis";
 import { paymentService } from "./paymentService";
 import { orderNotificationService } from "./orderNotificationService";
+import { courierLocationService } from "./courierLocationService";
 import type { RiskAssessment } from "@mydoners/shared-contracts";
 
 type OrderRow = typeof orders.$inferSelect;
@@ -453,7 +454,23 @@ export const orderService = {
       });
     }
 
+    // Terminal states end the live-location bubble. Fire-and-forget: failing
+    // to stop a pin must not fail the status transition itself, and Telegram
+    // expires it on its own within live_period as a backstop.
+    if (newStatus === "DELIVERED" || newStatus === "CANCELLED") {
+      courierLocationService
+        .stopForOrder(existing.order)
+        .catch((err) => console.error(`Failed to stop live location for order ${orderId}:`, err));
+    }
+
     return this.getOrder(orderId);
+  },
+
+  /** Courier's current position relative to this order — null unless ON_THE_WAY. */
+  async getCourierLocation(orderId: number) {
+    const existing = await orderRepository.findById(orderId);
+    if (!existing) throw new NotFoundError(`${orderId}-buyurtma topilmadi`);
+    return courierLocationService.forOrder(existing.order);
   },
 
   // Backs POST /orders/:orderId/delivery-proof — the courier's "Delivered"
@@ -498,6 +515,11 @@ export const orderService = {
     orderNotificationService
       .notifyStatusChange(userId, toApiOrder(result.order, []), "DELIVERED")
       .catch((err) => console.error(`Failed to send delivered notification for order ${orderId}:`, err));
+    // Same as the DELIVERED branch in updateStatus — the courier's photo-proof
+    // path reaches DELIVERED without going through it.
+    courierLocationService
+      .stopForOrder(result.order)
+      .catch((err) => console.error(`Failed to stop live location for order ${orderId}:`, err));
 
     return this.getOrder(orderId);
   },

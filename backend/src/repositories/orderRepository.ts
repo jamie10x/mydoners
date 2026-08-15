@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "../db";
 import { orderItems, orderLogs, orders, products } from "../db/schema";
 import type { ChangedBy, OrderStatus, PaymentType, RiskLevel } from "@mydoners/shared-contracts";
@@ -231,6 +231,31 @@ export const orderRepository = {
       .where(eq(orders.userId, userId))
       .orderBy(desc(orderLogs.timestamp))
       .limit(limit);
+  },
+
+  /**
+   * Claims the right to own this order's live-location bubble.
+   *
+   * The `IS NULL` guard is the idempotency latch: two concurrent position
+   * ticks can both call sendLocation, but only one wins the update. The loser
+   * stops the message it just sent and discards it, so a customer never ends
+   * up with two live pins for the same order. Doing it in the database rather
+   * than an in-process lock means it also holds across a redeploy.
+   */
+  async claimLiveLocationMessage(orderId: number, messageId: number): Promise<boolean> {
+    const claimed = await db
+      .update(orders)
+      .set({ courierLiveMessageId: messageId, courierLiveStartedAt: new Date() })
+      .where(and(eq(orders.id, orderId), isNull(orders.courierLiveMessageId)))
+      .returning({ id: orders.id });
+    return claimed.length > 0;
+  },
+
+  async clearLiveLocationMessage(orderId: number) {
+    await db
+      .update(orders)
+      .set({ courierLiveMessageId: null, courierLiveStartedAt: null })
+      .where(eq(orders.id, orderId));
   },
 
   async markPaid(id: number) {

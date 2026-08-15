@@ -122,6 +122,25 @@ interface DeliveryConfirmedData {
 }
 ```
 
+### `courier.location`
+**Direction:** server → Mini App
+Emitted whenever the courier bot relays a position (Telegram `message:location` for the initial live share, then `edit:location` for each movement) while at least one order is `ON_THE_WAY`. Sent to the ordering customer's room only.
+
+**Deliberately not delivered to KDS or the Courier Bot, and no listener should be added to either.** The kitchen has no use for a moving pin, and the courier bot is the producer. This is the one event in this catalog with a single recipient — the "reflect in all four clients" rule above does not apply to it, and a Kotlin data class for it would be dead code.
+
+There is one courier, so position is shift-scoped: every in-flight order receives the same coordinates, with `distanceMeters` and `etaMinutes` computed against that order's own destination. `etaMinutes` is null when the share is a one-shot pin rather than a live one, or when more than one order is out for delivery at once (the courier may be visiting the other customer first, so any single number would be confidently wrong).
+
+```ts
+interface CourierLocationData {
+  latitude: number;
+  longitude: number;
+  reportedAt: string;            // ISO 8601 — courier device time, not relay time
+  isLive: boolean;
+  distanceMeters: number | null;
+  etaMinutes: number | null;
+}
+```
+
 ## Naming convention
 
 - Event names: `<subject>.<past-tense-verb>` (`order.created`, not `order.create` or `orderCreated`).

@@ -115,6 +115,20 @@ export const orderController = {
     res.json(order);
   },
 
+  /**
+   * Current courier position for this order, or null.
+   *
+   * The WebSocket only pushes on change, so a customer opening the Mini App
+   * between two ticks would otherwise see an empty map for up to a minute.
+   */
+  async courierLocation(req: Request, res: Response) {
+    const orderId = Number(req.params.orderId);
+    if (req.actor?.type === "user") {
+      await orderService.assertOwnedBy(orderId, req.actor.telegramId);
+    }
+    res.json(await orderService.getCourierLocation(orderId));
+  },
+
   async getRisk(req: Request, res: Response) {
     const orderId = Number(req.params.orderId);
     res.json(await orderService.getRiskAssessment(orderId));
